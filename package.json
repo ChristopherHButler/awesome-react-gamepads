@@ -1,8 +1,8 @@
 {
   "name": "awesome-react-gamepads",
   "version": "0.0.2",
-  "description": "",
-  "author": "",
+  "description": "A react hook to use the browser Gamepad API in react applications.",
+  "author": "Christopher Harold Butler",
   "main": "./lib/cjs/index.js",
   "module": "./lib/esm/index.js",
   "types": "./lib/esm/index.d.ts",
@@ -30,9 +30,7 @@
     "compile": "tsc -p tsconfig.json && tsc -p tsconfig-cjs.json && tsc -p tsconfig-umd.json",
     "prepublish": "npm run compile"
   },
-  "dependencies": {
-    "lodash": "^4.17.21"
-  },
+  "dependencies": { },
   "devDependencies": {
     "@types/react": "^17.0.30",
     "@types/react-dom": "^17.0.9",
