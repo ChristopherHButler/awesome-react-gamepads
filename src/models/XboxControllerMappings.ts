@@ -1,5 +1,5 @@
 
-export const Xbox = {
+export const XboxControllerMappings = {
   buttons: [
     'A',         // gamepad.buttons[0].pressed
     'B',         // gamepad.buttons[1].pressed
