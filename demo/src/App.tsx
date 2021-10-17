@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+// import React, { useState, useEffect } from 'react';
 
 // import useGamepads, { testArgs } from 'awesome-react-gamepads/src';
-import useGamepads from './useGamepads';
-import Controller from './Controller';
+// import useGamepads from './hooks/useGamepads';
+import Controller from './components/Controller';
 
 
 function App() {
