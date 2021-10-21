@@ -1,4 +1,3 @@
-
 export const XboxControllerMappings = {
   buttons: [
     'A',         // gamepad.buttons[0].pressed
