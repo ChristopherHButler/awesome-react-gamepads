@@ -30,7 +30,8 @@ const Controller = ({
 
 
   useGamepads({
-    // onConnect: (gamepad) => console.log('Gamepad Connected: ', gamepad),
+    onConnect: (gamepad) => console.log('Gamepad Connected: ', gamepad),
+    onDisconnect: (gamepad) => console.log('Gamepad Disconnected: ', gamepad),
     onUpdate: (gp) => setGamepads(gp),
     onGamepadButtonUp: (button) => onGamepadButtonUp(button),
     onKonamiSuccess: () => onKonamiSuccess(),

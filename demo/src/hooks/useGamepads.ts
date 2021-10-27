@@ -112,6 +112,7 @@ const useGamepads = (
 
   const currentGamepadState = useRef<any>(INITIAL_GAMEPAD_STATE);
   const gamepads = useRef<any>(); // { 0: { ...INITIAL_GAMEPAD_STATE } }
+  const gamepadList = useRef<any>();
   const requestRef = useRef<number>(0);
   const sequence = useRef<string[]>([]);
 
@@ -142,8 +143,6 @@ const useGamepads = (
     // dispatch event
     document.dispatchEvent(new CustomEvent("gamepadupdated", { bubbles: true, cancelable: false, detail: { gamepad: currentGamepadState.current } }));
 
-    // fire callback
-    onConnect(currentGamepadState.current);
   }, []);
 
   const updateSequence = (buttonDetails: ButtonDetails) => {
@@ -344,8 +343,36 @@ const useGamepads = (
   }, [updateAllButtons, updateAllAxes, addGamepad, onUpdate]);
 
   const scanGamepads = () => {
+
     // Grab gamepads from browser API
-    const detectedGamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+    const detectedGamepads: (Gamepad | null)[] = navigator.getGamepads ? navigator.getGamepads() : [];
+
+    // do some work to detect connect or disconnect
+
+    // loop through all key value pairs
+    for (const [key, gamepad] of Object.entries(detectedGamepads)) {
+      // a gamepad was connected
+      if (!gamepadList && gamepad) {
+        onConnect(gamepad);
+      }
+
+      // previously there was a controller connected
+      if (gamepadList && gamepadList.current) {
+        // controller added
+        if (gamepadList.current[key] === null &&  gamepad !== null) {
+          onConnect(gamepad);
+        }
+        // controller removed
+        if (gamepadList.current[key] !== null && !gamepad) {
+          onDisconnect(gamepadList.current[key]);
+        }
+      }
+
+    }
+
+    // finally set the current Gamepad list
+    gamepadList.current = detectedGamepads;
+
     return detectedGamepads;
   };
 
