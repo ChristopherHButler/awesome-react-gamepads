@@ -1,6 +1,6 @@
 # awesome-react-gamepads
 
-> 🎮 &nbsp; A react hook, context and HOC to use the browser [Gamepad API](https://developer.mozilla.org/en-US/docs/Web/API/Gamepad_API) in react applications.
+> 🎮 &nbsp; A react hook to use the browser [Gamepad API](https://developer.mozilla.org/en-US/docs/Web/API/Gamepad_API) in react applications.
 
 <p align="center">
   <a href="https://badge.fury.io/js/awesome-react-gamepads">
@@ -20,7 +20,7 @@
 > Please note: this package is currently under development.
 > Check back often for the latest updates.
 
-Currently, The react hook is in the testing phase.
+Currently, The react hook is working. context and HOC coming soon.
 
 ## Install
 
@@ -32,17 +32,78 @@ Currently, The react hook is in the testing phase.
 
 ## Features
 
-- A react hook and context to use the native browser Gamepad API in react applications.
+- A react hook to use the native browser Gamepad API in react applications.
 
-- A React component to visualize button and axe interaction on the xbox gamepad.
+- A React component (in demo project) to visualize button and axe interaction on the xbox gamepad.
 
 - Support for using a callback on successful konami code entry from the gamepad.
 
 - Supports ES modules (esm), CommonJS (cjs) and UMD modules. The default entry point is the esm module.
 
+### Coming Soon
+
+- React context to use the native browser Gamepad API in react applications.
+
 <br />
 
 ## Hook Usage
+
+### Examples
+
+#### Example using callback props
+
+```tsx
+import useGamepads from 'awesome-react-gamepads';
+
+interface IGamepads {
+  [key: number]: Gamepad;
+}
+
+const Controller = () => {
+  const [gamepad, setGamepad] = useState<Gamepad>({});
+  const [gamepads, setGamepads] = useState<IGamepads>(null);
+
+  useGamepads({
+    // onConnect: (gamepad) => console.log('Gamepad Connected: ', gamepad),
+    onUpdate: (gamepad) => setGamepads(gamepad),
+    onGamepadButtonUp: (button) => onGamepadButtonUp(button),
+    onKonamiSuccess: () => onKonamiSuccess(),
+  });
+
+  return <div>...</div>;
+};
+```
+
+#### Example using events
+
+```tsx
+import { useState, useEffect } from 'react';
+import useGamepads from 'awesome-react-gamepads';
+
+interface IGamepads {
+  [key: number]: Gamepad;
+}
+
+const Controller = () => {
+  const [gamepad, setGamepad] = useState<Gamepad>({});
+  const [gamepads, setGamepads] = useState<IGamepads>(null);
+
+  const onEvtGamepadButtonUp = (e: CustomEvent) => {
+    console.log('Event - onEvtGamepadButtonUp: ', e);
+  };
+
+  useEffect(() => {
+    window.addEventListener('gamepadbuttonup', onEvtGamepadButtonUp);
+
+    // cleanup this component
+    return () => window.removeEventListener('gamepadbuttonup', onEvtGamepadButtonUp);
+  }, []);
+
+  return <div>...</div>;
+};
+```
+
+<br />
 
 ### Props API
 
@@ -276,61 +337,6 @@ fired when the left stick moves right.
 #### rightStickYDown
 
 `rightStickYDown`
-
-### Examples
-
-#### Example using callback props
-
-```tsx
-import useGamepads from 'awesome-react-gamepads';
-
-interface IGamepads {
-  [key: number]: Gamepad;
-}
-
-const Controller = () => {
-  const [gamepad, setGamepad] = useState<Gamepad>({});
-  const [gamepads, setGamepads] = useState<IGamepads>(null);
-
-  useGamepads({
-    // onConnect: (gamepad) => console.log('Gamepad Connected: ', gamepad),
-    onUpdate: (gamepad) => setGamepads(gamepad),
-    onGamepadButtonUp: (button) => onGamepadButtonUp(button),
-    onKonamiSuccess: () => onKonamiSuccess(),
-  });
-
-  return <div>...</div>;
-};
-```
-
-#### Example using events
-
-```tsx
-import { useState, useEffect } from 'react';
-import useGamepads from 'awesome-react-gamepads';
-
-interface IGamepads {
-  [key: number]: Gamepad;
-}
-
-const Controller = () => {
-  const [gamepad, setGamepad] = useState<Gamepad>({});
-  const [gamepads, setGamepads] = useState<IGamepads>(null);
-
-  const onEvtGamepadButtonUp = (e: CustomEvent) => {
-    console.log('Event - onEvtGamepadButtonUp: ', e);
-  };
-
-  useEffect(() => {
-    window.addEventListener('gamepadbuttonup', onEvtGamepadButtonUp);
-
-    // cleanup this component
-    return () => window.removeEventListener('gamepadbuttonup', onEvtGamepadButtonUp);
-  }, []);
-
-  return <div>...</div>;
-};
-```
 
 ## Context Usage
 
