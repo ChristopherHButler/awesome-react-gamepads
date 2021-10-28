@@ -41,7 +41,7 @@ interface UseGamepadsProps {
   onKonamiSuccess?:() => void;
 }
 
-const useGamepads = (
+export const useGamepads = (
   {
     stickThreshold = 0.75,
     deadZone = 0.08,
@@ -442,5 +442,3 @@ const useGamepads = (
 
   return gp;
 };
-
-export default useGamepads;
