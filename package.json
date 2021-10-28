@@ -1,10 +1,11 @@
 {
   "name": "awesome-react-gamepads",
-  "version": "0.0.1",
-  "description": "",
-  "author": "",
+  "version": "0.1.0",
+  "description": "A react hook, context and HOC to use the browser Gamepad API in react applications.",
+  "author": "Christopher Harold Butler",
   "main": "./lib/cjs/index.js",
   "module": "./lib/esm/index.js",
+  "types": "./lib/esm/index.d.ts",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -14,7 +15,11 @@
     "url": "https://github.com/ChristopherHButler/awesome-react-gamepads/issues"
   },
   "homepage": "https://github.com/ChristopherHButler/awesome-react-gamepads",
-  "keywords": ["Gamepad API", "React-Gamepad", "React-Gamepads"],
+  "keywords": [
+    "Gamepad API",
+    "React-Gamepad",
+    "React-Gamepads"
+  ],
   "files": [
     "lib/"
   ],
@@ -25,10 +30,19 @@
     "compile": "tsc -p tsconfig.json && tsc -p tsconfig-cjs.json && tsc -p tsconfig-umd.json",
     "prepublish": "npm run compile"
   },
+  "dependencies": { },
   "devDependencies": {
+    "@types/react": "^17.0.30",
+    "@types/react-dom": "^17.0.9",
     "prettier": "^2.4.1",
+    "react": "^17.0.2",
+    "react-dom": "^17.0.2",
     "tslint": "^6.1.3",
     "tslint-config-prettier": "^1.18.0",
     "typescript": "^4.4.4"
-  }
+  },
+  "peerDependencies": {
+    "react": "^17.0.2",
+    "react-dom": "^17.0.2"
+ }
 }
