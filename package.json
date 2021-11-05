@@ -1,11 +1,12 @@
 {
   "name": "awesome-react-gamepads",
-  "version": "0.1.3",
+  "version": "0.1.7",
   "description": "A react hook, context and HOC to use the browser Gamepad API in react applications.",
   "author": "Christopher Harold Butler",
-  "main": "./lib/cjs/index.js",
-  "module": "./lib/esm/index.js",
-  "types": "./lib/esm/index.d.ts",
+  "main": "./lib/index.js",
+  "browser": "./lib/index.umd.js",
+  "module": "./lib/index.es.js",
+  "types": "./lib/index.d.ts",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -28,17 +29,21 @@
     "lint": "tslint -p tsconfig.json",
     "test": "jest --config jestconfig.json",
     "compile": "tsc -p tsconfig.json && tsc -p tsconfig-cjs.json && tsc -p tsconfig-umd.json",
-    "build": "npm run build:min && npm run build:unmin",
-    "build:min": "NODE_ENV=production rollup --config",
-    "build:unmin": "NODE_ENV=production rollup --config --file dist/bundle.min.js",
-    "prepublish": "npm run build"
+    "build": "NODE_ENV=production rollup --config",
+    "prepublish": "rm -rf lib && npm run build",
+    "postbuild": "npm pack && tar -xvzf *.tgz && rm -rf package *.tgz"
   },
   "dependencies": {
+    "@react-native-community/masked-view": "^0.1.11",
     "@rollup/plugin-commonjs": "^21.0.1",
     "@rollup/plugin-json": "^4.1.0",
     "@rollup/plugin-node-resolve": "^13.0.6",
     "babel-core": "^6.26.3",
     "babel-runtime": "^6.26.0",
+    "react-native-gesture-handler": "^1.10.3",
+    "react-native-reanimated": "^2.2.3",
+    "react-native-safe-area-context": "^3.3.2",
+    "react-native-screens": "^3.9.0",
     "rollup": "^2.58.3",
     "rollup-plugin-terser": "^7.0.2",
     "rollup-plugin-typescript2": "^0.30.0"
