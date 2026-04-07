@@ -80,6 +80,28 @@ export const ControllerProfiles: Record<ControllerProfile, ProfileDefinition> = 
 };
 
 /**
+ * Translates a sequence of button names from one profile's naming convention to another.
+ * Used so Konami / combo sequences defined with Xbox names work correctly on any profile.
+ *
+ * ```ts
+ * translateSequence(['A', 'B'], 'xbox', 'playstation') // → ['Cross', 'Circle']
+ * ```
+ */
+export function translateSequence(
+  sequence: string[],
+  from: ControllerProfile,
+  to: ControllerProfile,
+): string[] {
+  if (from === to) return sequence;
+  const fromButtons = ControllerProfiles[from].buttons;
+  const toButtons = ControllerProfiles[to].buttons;
+  return sequence.map(name => {
+    const idx = fromButtons.indexOf(name);
+    return idx >= 0 ? (toButtons[idx] ?? name) : name;
+  });
+}
+
+/**
  * Returns a map from Xbox button names to the equivalent names in the given profile.
  * Useful for rendering correct button labels in UI:
  *

@@ -62,6 +62,41 @@ const Controller = () => {
 };
 ```
 
+### useGamepadSequence
+
+Detects an arbitrary button sequence and fires a callback when matched. Works standalone — no `useGamepads` required.
+
+Accepts button names (`"A"`, `"Cross"`) or raw indices (`0`, `1`).
+
+```tsx
+import { useGamepadSequence } from 'awesome-react-gamepads';
+
+// Konami code
+useGamepadSequence(
+  ['DPadUp','DPadUp','DPadDown','DPadDown','DPadLeft','DPadRight','DPadLeft','DPadRight','B','A'],
+  () => activateCheats(),
+);
+
+// Fighting game special with 2-second input window
+useGamepadSequence(['DPadDown', 'DPadRight', 'A'], () => fireHadouken(), { timeout: 2000 });
+
+// PlayStation button names
+useGamepadSequence(['Cross','Circle','Cross'], () => doCombo(), { controllerProfile: 'playstation' });
+
+// Mix of names and raw indices
+useGamepadSequence(['A', 1, 0], () => doSomething());
+```
+
+**Options:**
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `timeout` | `number` (ms) | `0` | Max time between consecutive inputs before reset. `0` = no limit. |
+| `resetOnMiss` | `boolean` | `true` | Reset progress on any wrong button. |
+| `controllerProfile` | `ControllerProfile` | `"xbox"` | Profile for resolving button names. |
+
+**Returns:** `{ reset: () => void }` — call to manually clear progress.
+
 ### useGamepad(index)
 
 Tracks a single gamepad by index. Useful for local multiplayer:
@@ -240,7 +275,10 @@ Each fires `(axes: AxesDetails)` when the stick crosses `stickThreshold`.
 #### onKonamiSuccess
 
 `onKonamiSuccess()`
-Fired when the Konami code (↑↑↓↓←→←→BA) is entered.
+Fired when the Konami code (↑↑↓↓←→←→BA) is entered. Convenience wrapper over `useGamepadSequence` — equivalent to:
+```ts
+useGamepadSequence(konamiCodeSequence, callback)
+```
 
 ---
 

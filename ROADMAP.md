@@ -61,15 +61,15 @@ This library and [cdbx.ai](https://cdbx.ai) (an in-development web-based develop
 
 ---
 
-## Phase 4 — Combo & Sequence System
+## Phase 4 — Combo & Sequence System ✅
 
 > A general combo engine, not just Konami code.
 
-- [ ] Extract and generalize the existing Konami detection logic into a reusable `useGamepadSequence(sequence, callback, options?)` hook
-- [ ] Support configurable timeout between inputs (how long the player has to complete the sequence)
-- [ ] Support both button name sequences (`["A", "B", "A"]`) and raw index sequences
-- [ ] Keep `onKonamiSuccess` working as a convenience wrapper over the new system
-- [ ] Ship as a named export so it can be used standalone without `useGamepads`
+- [x] Extract and generalize the existing Konami detection logic into a reusable `useGamepadSequence(sequence, callback, options?)` hook
+- [x] Support configurable timeout between inputs (how long the player has to complete the sequence)
+- [x] Support both button name sequences (`["A", "B", "A"]`) and raw index sequences
+- [x] Keep `onKonamiSuccess` working as a convenience wrapper over the new system
+- [x] Ship as a named export so it can be used standalone without `useGamepads`
 
 **Exit criteria:** Developers can define arbitrary button combos (fighting game inputs, cheat codes, etc.) with a single hook call.
 

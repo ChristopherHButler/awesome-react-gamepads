@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useDebugValue } from 'react';
 
-import { ControllerProfile, ControllerProfiles, getButtonLabels } from '../models/ControllerProfiles';
-import { XboxControllerMappings } from '../models/XboxControllerMappings';
+import { ControllerProfile, ControllerProfiles, getButtonLabels, translateSequence } from '../models/ControllerProfiles';
+import { SequenceMatcher } from '../utils/SequenceMatcher';
 
 import {
   AxesDetails,
@@ -167,9 +167,19 @@ export function useGamepadCore(
   const gamepads = useRef<any>({});
   const gamepadList = useRef<any>(null);
   const requestRef = useRef<number>(0);
-  const sequence = useRef<string[]>([]);
   const pressedAt = useRef<Record<string, number>>({});
   const holdFired = useRef<Record<string, boolean>>({});
+
+  // onKonamiSuccess is a convenience wrapper over SequenceMatcher
+  const konamiCallbackRef = useRef(onKonamiSuccess);
+  useEffect(() => { konamiCallbackRef.current = onKonamiSuccess; }, [onKonamiSuccess]);
+
+  const konamiMatcher = useRef<SequenceMatcher>(
+    new SequenceMatcher(translateSequence(konamiCodeSequence, 'xbox', controllerProfile)),
+  );
+  useEffect(() => {
+    konamiMatcher.current.setSequence(translateSequence(konamiCodeSequence, 'xbox', controllerProfile));
+  }, [controllerProfile]);
 
   const [gp, setGp] = useState<ReactGamepad | undefined>(undefined);
 
@@ -217,31 +227,11 @@ export function useGamepadCore(
     }
   }, []);
 
-  const updateSequence = useCallback((buttonDetails: ButtonDetails) => {
-    const { buttonName } = buttonDetails;
-
-    // Konami sequence is always expressed in Xbox names; map back via profile
-    const xboxButtons = ControllerProfiles.xbox.buttons;
-    const profileButtons = profileDef.buttons;
-    const xboxIdx = profileButtons.indexOf(buttonName);
-    const xboxName = xboxIdx >= 0 ? xboxButtons[xboxIdx] : buttonName;
-
-    const next = [...sequence.current, xboxName];
-
-    for (let i = 0; i < next.length; i++) {
-      if (next[i] !== konamiCodeSequence[i]) {
-        sequence.current = xboxName === konamiCodeSequence[0] ? [xboxName] : [];
-        return;
-      }
+  const checkKonami = useCallback((buttonName: string) => {
+    if (konamiMatcher.current.onButtonUp(buttonName)) {
+      konamiCallbackRef.current();
     }
-
-    sequence.current = next;
-
-    if (next.length === konamiCodeSequence.length) {
-      onKonamiSuccess();
-      sequence.current = [];
-    }
-  }, [onKonamiSuccess, profileDef]);
+  }, []);
 
   const updateButton = useCallback((buttonIndex: number, button: GamepadButton) => {
     const buttonName = profileDef.buttons[buttonIndex];
@@ -276,7 +266,7 @@ export function useGamepadCore(
         if (isBrowser) {
           document.dispatchEvent(new CustomEvent('gamepadbuttonup', { bubbles: true, cancelable: false, detail: { gamepad: currentGamepadState.current.index, buttonDetails } }));
         }
-        updateSequence(buttonDetails);
+        checkKonami(buttonName);
         onGamepadButtonUp(buttonDetails);
         delete pressedAt.current[buttonName];
         delete holdFired.current[buttonName];
@@ -298,7 +288,7 @@ export function useGamepadCore(
         [buttonName]: button,
       },
     };
-  }, [holdThreshold, profileDef, onGamepadButtonChange, onGamepadButtonDown, onGamepadButtonUp, onGamepadButtonHold, updateSequence]);
+  }, [holdThreshold, profileDef, onGamepadButtonChange, onGamepadButtonDown, onGamepadButtonUp, onGamepadButtonHold, checkKonami]);
 
   const updateAxes = useCallback((axesIndex: number, value: number) => {
     const rawName = profileDef.axes[axesIndex];
