@@ -1,5 +1,6 @@
 import { renderHook, act } from '@testing-library/react';
 import { useGamepads } from '../hooks/useGamepads';
+import { getButtonLabels } from '../models/ControllerProfiles';
 
 // ---------------------------------------------------------------------------
 // Browser API mocks
@@ -206,5 +207,59 @@ describe('useGamepads — Konami code', () => {
     }
 
     expect(onKonamiSuccess).not.toHaveBeenCalled();
+  });
+});
+
+describe('useGamepads — controller profiles', () => {
+  it('uses PlayStation button names in ButtonDetails when profile is playstation', () => {
+    const onGamepadButtonDown = jest.fn();
+    renderHook(() => useGamepads({ controllerProfile: 'playstation', onGamepadButtonDown }));
+
+    // button index 0 = Cross on PlayStation
+    tick(makeGamepad([{ pressed: true, touched: true, value: 1 }]));
+    expect(onGamepadButtonDown).toHaveBeenCalledWith(
+      expect.objectContaining({ buttonName: 'Cross', buttonIndex: 0 }),
+    );
+  });
+
+  it('fires per-button callback (onA) for button index 0 regardless of profile', () => {
+    const onA = jest.fn();
+    renderHook(() => useGamepads({ controllerProfile: 'playstation', onA }));
+
+    tick(makeGamepad([{ pressed: true, touched: true, value: 1 }]));
+    expect(onA).toHaveBeenCalledWith(expect.objectContaining({ buttonIndex: 0 }));
+  });
+
+  it('uses Switch button names for face buttons', () => {
+    const onGamepadButtonDown = jest.fn();
+    renderHook(() => useGamepads({ controllerProfile: 'switch', onGamepadButtonDown }));
+
+    // button index 0 = B on Switch
+    tick(makeGamepad([{ pressed: true, touched: true, value: 1 }]));
+    expect(onGamepadButtonDown).toHaveBeenCalledWith(
+      expect.objectContaining({ buttonName: 'B', buttonIndex: 0 }),
+    );
+  });
+
+  it('returns correct buttonLabels for playstation profile', () => {
+    const labels = getButtonLabels('playstation');
+    expect(labels.A).toBe('Cross');
+    expect(labels.B).toBe('Circle');
+    expect(labels.X).toBe('Square');
+    expect(labels.Y).toBe('Triangle');
+    expect(labels.LB).toBe('L1');
+    expect(labels.Start).toBe('Options');
+  });
+
+  it('returns correct buttonLabels for switch profile', () => {
+    const labels = getButtonLabels('switch');
+    expect(labels.A).toBe('B');  // Xbox A = Switch B (bottom face)
+    expect(labels.B).toBe('A');  // Xbox B = Switch A (right face)
+  });
+
+  it('exposes profile on the return value', () => {
+    const { result } = renderHook(() => useGamepads({ controllerProfile: 'playstation' }));
+    expect(result.current.profile).toBe('playstation');
+    expect(result.current.buttonLabels.A).toBe('Cross');
   });
 });

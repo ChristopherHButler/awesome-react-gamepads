@@ -119,6 +119,26 @@ Threshold above which directional stick callbacks (`onLeftStickRight`, etc.) fir
 
 How long a button must be held before `onGamepadButtonHold` fires.
 
+#### controllerProfile
+
+`"xbox" | "playstation" | "switch" | "generic"` — default `"xbox"`
+
+Maps button names to the correct labels for the connected controller. Affects `ButtonDetails.buttonName` in all callbacks and the `buttonLabels` return value.
+
+| Profile | Face buttons | Shoulders | Triggers | Back / Start |
+|---|---|---|---|---|
+| `xbox` | A, B, X, Y | LB, RB | LT, RT | Select, Start |
+| `playstation` | Cross, Circle, Square, Triangle | L1, R1 | L2, R2 | Share, Options |
+| `switch` | B, A, Y, X | L, R | ZL, ZR | Minus, Plus |
+| `generic` | Button0–3 | Button4–5 | Button6–7 | Button8–9 |
+
+Per-button callbacks (`onA`, `onB`, etc.) always refer to the same **physical button position** regardless of profile — `onA` fires for button index 0 (bottom face) on any controller. Use `buttonLabels` from the return value to display the correct label in your UI.
+
+```tsx
+const { buttonLabels } = useGamepads({ controllerProfile: 'playstation' });
+<p>Press {buttonLabels.A} to jump</p>  // → "Press Cross to jump"
+```
+
 #### pollRate
 
 `number` (ms) — default: use `requestAnimationFrame`
@@ -230,8 +250,14 @@ Fired when the Konami code (↑↑↓↓←→←→BA) is entered.
 {
   gamepad: ReactGamepad | undefined;
   rumble: (options: RumbleOptions) => Promise<void>;
+  profile: ControllerProfile;
+  buttonLabels: Record<string, string>;
 }
 ```
+
+#### buttonLabels
+
+Maps Xbox button names to the active profile's display names. `buttonLabels.A` returns `"Cross"` for PlayStation, `"B"` for Switch, `"A"` for Xbox.
 
 #### rumble
 

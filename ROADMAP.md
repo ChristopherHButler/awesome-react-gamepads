@@ -48,14 +48,14 @@ This library and [cdbx.ai](https://cdbx.ai) (an in-development web-based develop
 
 ---
 
-## Phase 3 — Controller Profiles
+## Phase 3 — Controller Profiles ✅
 
 > Make the library useful for non-Xbox controllers.
 
-- [ ] Add a `controllerProfile` option: `"xbox" | "playstation" | "switch" | "generic"`
-- [ ] Map named button callbacks (`onA`, `onB`, etc.) to the correct indices per profile — PlayStation uses Cross/Circle/Square/Triangle, Switch uses B/A/Y/X (swapped from Xbox)
-- [ ] Expose the active profile on the hook return value so apps can render the correct button labels
-- [ ] Document the Standard Gamepad mapping and how profiles sit on top of it
+- [x] Add a `controllerProfile` option: `"xbox" | "playstation" | "switch" | "generic"`
+- [x] Map named button callbacks (`onA`, `onB`, etc.) to the correct indices per profile — PlayStation uses Cross/Circle/Square/Triangle, Switch uses B/A/Y/X (swapped from Xbox)
+- [x] Expose the active profile on the hook return value so apps can render the correct button labels
+- [x] Document the Standard Gamepad mapping and how profiles sit on top of it
 
 **Exit criteria:** Per-button callbacks fire correctly on a PS4/PS5 controller with `controllerProfile: "playstation"`.
 
