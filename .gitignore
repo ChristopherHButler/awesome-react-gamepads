@@ -3,5 +3,7 @@ lib
 /demo/node_modules
 /demo/build
 
-# Claude Code local settings
+# Claude Code
 .claude/
+CLAUDE.md
+ROADMAP.md
