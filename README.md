@@ -15,13 +15,6 @@
 </p>
 <br />
 
-## ⚠️ NOTICE: UNDER DEVELOPMENT ⚠️
-
-> Please note: this package is currently under development.
-> Check back often for the latest updates.
-
-Currently, The react hook is working. context and HOC coming soon.
-
 ## Install
 
 ```sh
