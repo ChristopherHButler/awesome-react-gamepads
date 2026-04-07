@@ -10,6 +10,8 @@ import {
   konamiCodeSequence,
 } from '../constants';
 
+import { UseGamepadsProps, UseGamepadsReturn } from './useGamepads';
+
 const isBrowser = typeof window !== 'undefined';
 
 const DEAD_ZONE_PRESETS = {
@@ -19,64 +21,19 @@ const DEAD_ZONE_PRESETS = {
   large: 0.15,
 };
 
-type DeadZonePreset = keyof typeof DEAD_ZONE_PRESETS;
-
-export interface UseGamepadsProps {
-  deadZone?: number | DeadZonePreset;
-  stickThreshold?: number;
-  holdThreshold?: number;
-  pollRate?: number;
-
-  onConnect?: (gamepad: ReactGamepad) => void;
-  onDisconnect?: (gamepad: ReactGamepad) => void;
-  onUpdate?: (gamepad: ReactGamepad) => void;
-
-  onGamepadButtonDown?: (button: ButtonDetails) => void;
-  onGamepadButtonUp?: (button: ButtonDetails) => void;
-  onGamepadButtonChange?: (button: ButtonDetails) => void;
-  onGamepadButtonHold?: (button: ButtonDetails) => void;
-
-  onA?: (button: ButtonDetails) => void;
-  onB?: (button: ButtonDetails) => void;
-  onX?: (button: ButtonDetails) => void;
-  onY?: (button: ButtonDetails) => void;
-  onLB?: (button: ButtonDetails) => void;
-  onRB?: (button: ButtonDetails) => void;
-  onLT?: (button: ButtonDetails) => void;
-  onRT?: (button: ButtonDetails) => void;
-  onSelect?: (button: ButtonDetails) => void;
-  onStart?: (button: ButtonDetails) => void;
-  onLS?: (button: ButtonDetails) => void;
-  onRS?: (button: ButtonDetails) => void;
-  onDPadUp?: (button: ButtonDetails) => void;
-  onDPadDown?: (button: ButtonDetails) => void;
-  onDPadLeft?: (button: ButtonDetails) => void;
-  onDPadRight?: (button: ButtonDetails) => void;
-  onXBoxLogo?: (button: ButtonDetails) => void;
-
-  onGamepadAxesChange?: (axes: AxesDetails) => void;
-
-  onLeftStickRight?: (axes: AxesDetails) => void;
-  onLeftStickLeft?: (axes: AxesDetails) => void;
-  onLeftStickUp?: (axes: AxesDetails) => void;
-  onLeftStickDown?: (axes: AxesDetails) => void;
-
-  onRightStickRight?: (axes: AxesDetails) => void;
-  onRightStickLeft?: (axes: AxesDetails) => void;
-  onRightStickUp?: (axes: AxesDetails) => void;
-  onRightStickDown?: (axes: AxesDetails) => void;
-
-  onKonamiSuccess?: () => void;
-}
-
-export interface UseGamepadsReturn {
-  gamepad: ReactGamepad | undefined;
-  rumble: (options: RumbleOptions) => Promise<void>;
-}
-
 const NOOP = () => {};
 
-export const useGamepads = (
+/**
+ * useGamepad — tracks a single gamepad by index. Useful for local multiplayer
+ * where each player has their own hook instance:
+ *
+ * ```tsx
+ * const { gamepad: p1 } = useGamepad(0, { onA: () => jump() });
+ * const { gamepad: p2 } = useGamepad(1, { onA: () => jump() });
+ * ```
+ */
+export const useGamepad = (
+  index: number,
   {
     deadZone: deadZoneOption = 'medium',
     stickThreshold = 0.75,
@@ -134,7 +91,7 @@ export const useGamepads = (
   const INITIAL_GAMEPAD_STATE = {
     connected: false,
     id: '',
-    index: 0,
+    index,
     mapping: '',
     vibrationActuator: '',
     buttons: {
@@ -168,8 +125,6 @@ export const useGamepads = (
 
   const currentGamepadState = useRef<any>(INITIAL_GAMEPAD_STATE);
   const rawGamepadRef = useRef<Gamepad | null>(null);
-  const gamepads = useRef<any>();
-  const gamepadList = useRef<any>();
   const requestRef = useRef<number>(0);
   const sequence = useRef<string[]>([]);
   const pressedAt = useRef<Record<string, number>>({});
@@ -177,28 +132,15 @@ export const useGamepads = (
 
   const [gp, setGp] = useState<ReactGamepad | undefined>(undefined);
 
-  useDebugValue(gp, (g) => g ? `Gamepad: ${g.id} (index ${g.index})` : 'No gamepad');
+  useDebugValue(gp, (g) => g ? `Gamepad[${index}]: ${g.id}` : `No gamepad at index ${index}`);
 
-  // Per-button callback map — keyed by the XboxControllerMappings button name
   const perButtonCallbacks = useRef<Record<string, (b: ButtonDetails) => void>>({});
   useEffect(() => {
     perButtonCallbacks.current = {
-      A: onA,
-      B: onB,
-      X: onX,
-      Y: onY,
-      LB: onLB,
-      RB: onRB,
-      LT: onLT,
-      RT: onRT,
-      Select: onSelect,
-      Start: onStart,
-      LS: onLS,
-      RS: onRS,
-      DPadUp: onDPadUp,
-      DPadDown: onDPadDown,
-      DPadLeft: onDPadLeft,
-      DPadRight: onDPadRight,
+      A: onA, B: onB, X: onX, Y: onY,
+      LB: onLB, RB: onRB, LT: onLT, RT: onRT,
+      Select: onSelect, Start: onStart, LS: onLS, RS: onRS,
+      DPadUp: onDPadUp, DPadDown: onDPadDown, DPadLeft: onDPadLeft, DPadRight: onDPadRight,
       Xbox: onXBoxLogo,
     };
   }, [onA, onB, onX, onY, onLB, onRB, onLT, onRT, onSelect, onStart, onLS, onRS, onDPadUp, onDPadDown, onDPadLeft, onDPadRight, onXBoxLogo]);
@@ -212,13 +154,7 @@ export const useGamepads = (
       mapping: gamepad.mapping,
       vibrationActuator: gamepad.vibrationActuator,
     };
-
-    gamepads.current = {
-      [gamepad.index]: { ...currentGamepadState.current },
-    };
-
     setGp(currentGamepadState.current);
-
     if (isBrowser) {
       document.dispatchEvent(new CustomEvent('gamepadupdated', { bubbles: true, cancelable: false, detail: { gamepad: currentGamepadState.current } }));
     }
@@ -269,8 +205,6 @@ export const useGamepads = (
         }
         onGamepadButtonDown(buttonDetails);
         perButtonCallbacks.current[buttonName]?.(buttonDetails);
-
-        // Record press time for hold detection
         pressedAt.current[buttonName] = Date.now();
         holdFired.current[buttonName] = false;
       } else if (!pressed && wasPressed) {
@@ -279,26 +213,16 @@ export const useGamepads = (
         }
         updateSequence(buttonDetails);
         onGamepadButtonUp(buttonDetails);
-
-        // Clear hold tracking
         delete pressedAt.current[buttonName];
         delete holdFired.current[buttonName];
       }
     }
 
-    // Hold detection — fires every frame while held once threshold is exceeded
     if (pressed && pressedAt.current[buttonName] !== undefined && !holdFired.current[buttonName]) {
       const elapsed = Date.now() - pressedAt.current[buttonName];
       if (elapsed >= holdThreshold) {
         holdFired.current[buttonName] = true;
-        const buttonDetails: ButtonDetails = {
-          buttonIndex,
-          buttonName,
-          pressed,
-          touched,
-          value: String(value),
-        };
-        onGamepadButtonHold(buttonDetails);
+        onGamepadButtonHold({ buttonIndex, buttonName, pressed, touched, value: String(value) });
       }
     }
 
@@ -316,22 +240,12 @@ export const useGamepads = (
 
     const invert = axesName[0] === '-';
     let newValue = value * (invert ? -1 : 1);
-
-    if (Math.abs(newValue) < deadZone) {
-      newValue = 0;
-    }
-
+    if (Math.abs(newValue) < deadZone) newValue = 0;
     if (invert) axesName = axesName.substr(1);
 
     if (currentGamepadState.current.axes[axesName] !== newValue) {
       const previousValue = currentGamepadState.current.axes[axesName];
-
-      const axesDetails: AxesDetails = {
-        axesIndex,
-        axesName,
-        value: newValue,
-        previousValue,
-      };
+      const axesDetails: AxesDetails = { axesIndex, axesName, value: newValue, previousValue };
 
       if (isBrowser) {
         document.dispatchEvent(new CustomEvent('axeschange', { bubbles: true, detail: { gamepad: currentGamepadState.current.index, axes: axesDetails } }));
@@ -339,126 +253,60 @@ export const useGamepads = (
       onGamepadAxesChange(axesDetails);
 
       if (axesName === 'LeftStickX') {
-        if (previousValue <= stickThreshold && newValue > stickThreshold) {
-          if (isBrowser) document.dispatchEvent(new CustomEvent('leftStickXRight', { bubbles: true, detail: { gamepad: currentGamepadState.current.index, axes: axesDetails } }));
-          onLeftStickRight(axesDetails);
-        }
-        if (previousValue >= -stickThreshold && newValue < -stickThreshold) {
-          if (isBrowser) document.dispatchEvent(new CustomEvent('leftStickXLeft', { bubbles: true, detail: { gamepad: currentGamepadState.current.index, axes: axesDetails } }));
-          onLeftStickLeft(axesDetails);
-        }
+        if (previousValue <= stickThreshold && newValue > stickThreshold) { if (isBrowser) document.dispatchEvent(new CustomEvent('leftStickXRight', { bubbles: true, detail: { gamepad: currentGamepadState.current.index, axes: axesDetails } })); onLeftStickRight(axesDetails); }
+        if (previousValue >= -stickThreshold && newValue < -stickThreshold) { if (isBrowser) document.dispatchEvent(new CustomEvent('leftStickXLeft', { bubbles: true, detail: { gamepad: currentGamepadState.current.index, axes: axesDetails } })); onLeftStickLeft(axesDetails); }
       }
-
       if (axesName === 'LeftStickY') {
-        if (previousValue <= stickThreshold && newValue > stickThreshold) {
-          if (isBrowser) document.dispatchEvent(new CustomEvent('leftStickYUp', { bubbles: true, detail: { gamepad: currentGamepadState.current.index, axes: axesDetails } }));
-          onLeftStickUp(axesDetails);
-        }
-        if (previousValue >= -stickThreshold && newValue < -stickThreshold) {
-          if (isBrowser) document.dispatchEvent(new CustomEvent('leftStickYDown', { bubbles: true, detail: { gamepad: currentGamepadState.current.index, axes: axesDetails } }));
-          onLeftStickDown(axesDetails);
-        }
+        if (previousValue <= stickThreshold && newValue > stickThreshold) { if (isBrowser) document.dispatchEvent(new CustomEvent('leftStickYUp', { bubbles: true, detail: { gamepad: currentGamepadState.current.index, axes: axesDetails } })); onLeftStickUp(axesDetails); }
+        if (previousValue >= -stickThreshold && newValue < -stickThreshold) { if (isBrowser) document.dispatchEvent(new CustomEvent('leftStickYDown', { bubbles: true, detail: { gamepad: currentGamepadState.current.index, axes: axesDetails } })); onLeftStickDown(axesDetails); }
       }
-
       if (axesName === 'RightStickX') {
-        if (previousValue <= stickThreshold && newValue > stickThreshold) {
-          if (isBrowser) document.dispatchEvent(new CustomEvent('rightStickXRight', { bubbles: true, detail: { gamepad: currentGamepadState.current.index, axes: axesDetails } }));
-          onRightStickRight(axesDetails);
-        }
-        if (previousValue >= -stickThreshold && newValue < -stickThreshold) {
-          if (isBrowser) document.dispatchEvent(new CustomEvent('rightStickXLeft', { bubbles: true, detail: { gamepad: currentGamepadState.current.index, axes: axesDetails } }));
-          onRightStickLeft(axesDetails);
-        }
+        if (previousValue <= stickThreshold && newValue > stickThreshold) { if (isBrowser) document.dispatchEvent(new CustomEvent('rightStickXRight', { bubbles: true, detail: { gamepad: currentGamepadState.current.index, axes: axesDetails } })); onRightStickRight(axesDetails); }
+        if (previousValue >= -stickThreshold && newValue < -stickThreshold) { if (isBrowser) document.dispatchEvent(new CustomEvent('rightStickXLeft', { bubbles: true, detail: { gamepad: currentGamepadState.current.index, axes: axesDetails } })); onRightStickLeft(axesDetails); }
       }
-
       if (axesName === 'RightStickY') {
-        if (previousValue <= stickThreshold && newValue > stickThreshold) {
-          if (isBrowser) document.dispatchEvent(new CustomEvent('rightStickYUp', { bubbles: true, detail: { gamepad: currentGamepadState.current.index, axes: axesDetails } }));
-          onRightStickUp(axesDetails);
-        }
-        if (previousValue >= -stickThreshold && newValue < -stickThreshold) {
-          if (isBrowser) document.dispatchEvent(new CustomEvent('rightStickYDown', { bubbles: true, detail: { gamepad: currentGamepadState.current.index, axes: axesDetails } }));
-          onRightStickDown(axesDetails);
-        }
+        if (previousValue <= stickThreshold && newValue > stickThreshold) { if (isBrowser) document.dispatchEvent(new CustomEvent('rightStickYUp', { bubbles: true, detail: { gamepad: currentGamepadState.current.index, axes: axesDetails } })); onRightStickUp(axesDetails); }
+        if (previousValue >= -stickThreshold && newValue < -stickThreshold) { if (isBrowser) document.dispatchEvent(new CustomEvent('rightStickYDown', { bubbles: true, detail: { gamepad: currentGamepadState.current.index, axes: axesDetails } })); onRightStickDown(axesDetails); }
       }
     }
 
     currentGamepadState.current = {
       ...currentGamepadState.current,
-      axes: {
-        ...currentGamepadState.current.axes,
-        [axesName]: newValue,
-      },
+      axes: { ...currentGamepadState.current.axes, [axesName]: newValue },
     };
   }, [deadZone, stickThreshold, onGamepadAxesChange, onLeftStickRight, onLeftStickLeft, onLeftStickUp, onLeftStickDown, onRightStickRight, onRightStickLeft, onRightStickUp, onRightStickDown]);
 
-  const updateAllButtons = useCallback((gamepad: Gamepad) => {
-    const { buttons } = gamepad;
-    for (let i = 0; i < buttons.length; i++) {
-      const buttonName = XboxControllerMappings.buttonIndexToName(i);
-      updateButton(i, buttonName, buttons[i]);
-    }
-  }, [updateButton]);
-
-  const updateAllAxes = useCallback((gamepad: Gamepad) => {
-    const { axes } = gamepad;
-    for (let i = 0; i < axes.length; i++) {
-      const axesName = XboxControllerMappings.axesIndexToName(i);
-      updateAxes(i, axesName, axes[i]);
-    }
-  }, [updateAxes]);
-
   const updateGamepad = useCallback((gamepad: Gamepad) => {
     rawGamepadRef.current = gamepad;
-    updateAllButtons(gamepad);
-    updateAllAxes(gamepad);
+    const { buttons, axes } = gamepad;
+    for (let i = 0; i < buttons.length; i++) {
+      updateButton(i, XboxControllerMappings.buttonIndexToName(i), buttons[i]);
+    }
+    for (let i = 0; i < axes.length; i++) {
+      updateAxes(i, XboxControllerMappings.axesIndexToName(i), axes[i]);
+    }
     addGamepad(gamepad);
-    onUpdate(gamepads.current);
-  }, [updateAllButtons, updateAllAxes, addGamepad, onUpdate]);
+    onUpdate(currentGamepadState.current);
+  }, [updateButton, updateAxes, addGamepad, onUpdate]);
 
-  const scanGamepads = () => {
-    const detectedGamepads: (Gamepad | null)[] = isBrowser && navigator.getGamepads ? navigator.getGamepads() : [];
-
-    for (const [key, gamepad] of Object.entries(detectedGamepads)) {
-      if (!gamepadList.current && gamepad) {
-        onConnect(gamepad);
-      }
-
-      if (gamepadList.current) {
-        if (gamepadList.current[key] === null && gamepad !== null) {
-          onConnect(gamepad);
-        }
-        if (gamepadList.current[key] !== null && !gamepad) {
-          onDisconnect(gamepadList.current[key]);
-        }
-      }
-    }
-
-    gamepadList.current = detectedGamepads;
-    return detectedGamepads;
-  };
-
-  const updateGamepads = useCallback(() => {
-    const detectedGamepads = scanGamepads();
-
-    for (let i = 0; i < detectedGamepads.length; i++) {
-      const gamepad = detectedGamepads[i];
-      if (gamepad) updateGamepad(gamepad);
-    }
-  }, [updateGamepad]);
+  const pollGamepad = useCallback(() => {
+    if (!isBrowser || !navigator.getGamepads) return;
+    const gamepad = navigator.getGamepads()[index];
+    if (gamepad) updateGamepad(gamepad);
+  }, [index, updateGamepad]);
 
   const connectGamepadHandler = useCallback((e: GamepadEvent) => {
+    if (e.gamepad.index !== index) return;
     onConnect(e.gamepad);
     updateGamepad(e.gamepad);
-  }, [updateGamepad, onConnect]);
+  }, [index, updateGamepad, onConnect]);
 
   const disconnectGamepadHandler = useCallback((e: GamepadEvent) => {
-    const gamepad = e.gamepad;
+    if (e.gamepad.index !== index) return;
     currentGamepadState.current = { ...INITIAL_GAMEPAD_STATE };
     rawGamepadRef.current = null;
-    if (gamepad) delete gamepads.current[gamepad.index];
-    onDisconnect(gamepad);
-  }, [onDisconnect]);
+    onDisconnect(e.gamepad);
+  }, [index, onDisconnect]);
 
   useEffect(() => {
     if (!isBrowser) return;
@@ -474,22 +322,21 @@ export const useGamepads = (
 
   const onAnimationFrameUpdate = useCallback(() => {
     const haveEvents = isBrowser && 'ongamepadconnected' in window;
-    if (!haveEvents) updateGamepads();
+    if (!haveEvents) pollGamepad();
     requestRef.current = requestAnimationFrame(onAnimationFrameUpdate);
-  }, [updateGamepads]);
+  }, [pollGamepad]);
 
-  // Polling loop — rAF by default, setInterval when pollRate is specified
   useEffect(() => {
     if (!isBrowser) return;
 
     if (pollRate !== undefined && pollRate > 0) {
-      const id = setInterval(updateGamepads, pollRate);
+      const id = setInterval(pollGamepad, pollRate);
       return () => clearInterval(id);
     }
 
     requestRef.current = requestAnimationFrame(onAnimationFrameUpdate);
     return () => cancelAnimationFrame(requestRef.current);
-  }, [onAnimationFrameUpdate, updateGamepads, pollRate]);
+  }, [onAnimationFrameUpdate, pollGamepad, pollRate]);
 
   const rumble = useCallback(async (options: RumbleOptions): Promise<void> => {
     const raw = rawGamepadRef.current as any;

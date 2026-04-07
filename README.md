@@ -25,74 +25,73 @@
 
 ## Features
 
-- A react hook to use the native browser Gamepad API in react applications.
-
-- A React component (in demo project) to visualize button and axe interaction on the xbox gamepad.
-
-- Support for using a callback on successful konami code entry from the gamepad.
-
-- Supports ES modules (esm), CommonJS (cjs) and UMD modules. The default entry point is the esm module.
-
-### Coming Soon
-
-- React context to use the native browser Gamepad API in react applications.
+- `useGamepads` — tracks all connected gamepads with a full callback and event API
+- `useGamepad(index)` — single-controller variant for local multiplayer
+- Per-button callbacks: `onA`, `onB`, `onX`, `onY`, etc.
+- Button hold / long-press detection via `onGamepadButtonHold`
+- Haptic/rumble support via the `rumble()` return value
+- Polling rate control — use `requestAnimationFrame` (default) or a fixed interval
+- Dead zone presets: `"none" | "small" | "medium" | "large"` or a raw number
+- Konami code detection out of the box
+- SSR / Next.js safe — no `window`/`navigator` access during server render
+- ES modules, CommonJS, and UMD bundles
 
 <br />
 
 ## Hook Usage
 
-### Examples
+### useGamepads
 
-#### Example using callback props
+Tracks all connected gamepads. Returns `{ gamepad, rumble }`.
 
 ```tsx
-import useGamepads from 'awesome-react-gamepads';
-
-interface IGamepads {
-  [key: number]: Gamepad;
-}
+import { useGamepads } from 'awesome-react-gamepads';
 
 const Controller = () => {
-  const [gamepad, setGamepad] = useState<Gamepad>({});
-  const [gamepads, setGamepads] = useState<IGamepads>(null);
-
-  useGamepads({
-    // onConnect: (gamepad) => console.log('Gamepad Connected: ', gamepad),
-    onUpdate: (gamepad) => setGamepads(gamepad),
-    onGamepadButtonUp: (button) => onGamepadButtonUp(button),
-    onKonamiSuccess: () => onKonamiSuccess(),
+  const { gamepad, rumble } = useGamepads({
+    onA: (button) => console.log('A pressed', button),
+    onGamepadButtonHold: (button) => console.log(`${button.buttonName} held`),
+    onKonamiSuccess: () => console.log('Konami!'),
   });
 
-  return <div>...</div>;
+  return (
+    <button onClick={() => rumble({ duration: 200, strongMagnitude: 0.8 })}>
+      Rumble
+    </button>
+  );
 };
 ```
 
-#### Example using events
+### useGamepad(index)
+
+Tracks a single gamepad by index. Useful for local multiplayer:
+
+```tsx
+import { useGamepad } from 'awesome-react-gamepads';
+
+const Game = () => {
+  const { gamepad: p1, rumble: rumble1 } = useGamepad(0, { onA: () => jump(1) });
+  const { gamepad: p2, rumble: rumble2 } = useGamepad(1, { onA: () => jump(2) });
+  // ...
+};
+```
+
+### Using events
 
 ```tsx
 import { useState, useEffect } from 'react';
-import useGamepads from 'awesome-react-gamepads';
-
-interface IGamepads {
-  [key: number]: Gamepad;
-}
+import { useGamepads } from 'awesome-react-gamepads';
 
 const Controller = () => {
-  const [gamepad, setGamepad] = useState<Gamepad>({});
-  const [gamepads, setGamepads] = useState<IGamepads>(null);
-
-  const onEvtGamepadButtonUp = (e: CustomEvent) => {
-    console.log('Event - onEvtGamepadButtonUp: ', e);
-  };
+  useGamepads();
 
   useEffect(() => {
-    window.addEventListener('gamepadbuttonup', onEvtGamepadButtonUp);
-
-    // cleanup this component
-    return () => window.removeEventListener('gamepadbuttonup', onEvtGamepadButtonUp);
+    const handler = (e: CustomEvent) => console.log('button up', e.detail);
+    document.addEventListener('gamepadbuttonup', handler);
+    return () => document.removeEventListener('gamepadbuttonup', handler);
   }, []);
 
-  return <div>...</div>;
+  return <div />;
 };
 ```
 
@@ -100,276 +99,264 @@ const Controller = () => {
 
 ### Props API
 
+All props are optional.
+
 #### deadZone
 
-Threshold below which the axis values will be rounded to 0.0.
-Default: 0.08
+`number | "none" | "small" | "medium" | "large"`
+
+Threshold below which axis values are rounded to 0. Presets: `none` = 0, `small` = 0.05, `medium` = 0.08 (default), `large` = 0.15.
 
 #### stickThreshold
 
-Threshold above which `onUp`, `onDown`, `onLeft`, `onRight` are triggered for the left stick.
-`Default: 0.75`
+`number` — default `0.75`
 
-#### onConnect
+Threshold above which directional stick callbacks (`onLeftStickRight`, etc.) fire.
 
-`onConnect(gamepad: Gamepad)`
-Fired when the gamepad connects. Will be triggered at least once after the Gamepad component is mounted.
+#### holdThreshold
 
-#### onDisconnect
+`number` — default `500` (ms)
 
-`onDisconnect(gamepad: Gamepad)`
-Fired when the gamepad disconnects.
+How long a button must be held before `onGamepadButtonHold` fires.
 
-#### onUpdate
+#### pollRate
+
+`number` (ms) — default: use `requestAnimationFrame`
+
+When set, polling uses `setInterval` at this interval instead of rAF. Useful for UI navigation that doesn't need 60fps.
+
+---
+
+#### Lifecycle callbacks
+
+##### onConnect
+
+`onConnect(gamepad: ReactGamepad)`
+Fired when a gamepad connects.
+
+##### onDisconnect
+
+`onDisconnect(gamepad: ReactGamepad)`
+Fired when a gamepad disconnects.
+
+##### onUpdate
 
 `onUpdate(gamepad: ReactGamepad)`
-Fired whenever the gamepad is updated. This hook is setup to use the requestAnimationFrame and so it updates 60 times per second or every 0.0167s.
+Fired on every poll cycle.
 
-#### onGamepadButtonDown
+---
+
+#### Generic button callbacks
+
+##### onGamepadButtonDown
 
 `onGamepadButtonDown(button: ButtonDetails)`
-Fired on (at the beginning of) a button press.
+Fired on any button press.
 
-#### onGamepadButtonUp
+##### onGamepadButtonUp
 
 `onGamepadButtonUp(button: ButtonDetails)`
-Fired when a button press is released.
+Fired on any button release.
 
-#### onGamepadButtonChange
+##### onGamepadButtonChange
 
 `onGamepadButtonChange(button: ButtonDetails)`
-Fired when there is a state change in the button. This could be either a button down or up event.
+Fired on any button state change (down or up).
 
-#### onGamepadAxesChange
+##### onGamepadButtonHold
+
+`onGamepadButtonHold(button: ButtonDetails)`
+Fired once per press when a button has been held longer than `holdThreshold`.
+
+---
+
+#### Per-button callbacks
+
+Each fires on button-down for that specific button.
+
+| Prop | Button |
+|---|---|
+| `onA` | A |
+| `onB` | B |
+| `onX` | X |
+| `onY` | Y |
+| `onLB` | Left bumper |
+| `onRB` | Right bumper |
+| `onLT` | Left trigger |
+| `onRT` | Right trigger |
+| `onSelect` | Select / Back |
+| `onStart` | Start / Menu |
+| `onLS` | Left stick click |
+| `onRS` | Right stick click |
+| `onDPadUp` | D-Pad Up |
+| `onDPadDown` | D-Pad Down |
+| `onDPadLeft` | D-Pad Left |
+| `onDPadRight` | D-Pad Right |
+| `onXBoxLogo` | Xbox / Guide button |
+
+All have the signature `(button: ButtonDetails) => void`.
+
+---
+
+#### Axes callbacks
+
+##### onGamepadAxesChange
 
 `onGamepadAxesChange(axes: AxesDetails)`
-Fired when there is a state change in the axes.
+Fired when any axis moves.
 
-For individual button presses is it better to fire on button down, up or change? Will wait to implement these.
+##### Left stick directional
 
-#### onA [HOLD]
+`onLeftStickRight`, `onLeftStickLeft`, `onLeftStickUp`, `onLeftStickDown`
 
-`onA(button: ButtonDetails)`
+Each fires `(axes: AxesDetails)` when the stick crosses `stickThreshold`.
 
-#### onB [HOLD]
+##### Right stick directional
 
-`onB(button: ButtonDetails)`
+`onRightStickRight`, `onRightStickLeft`, `onRightStickUp`, `onRightStickDown`
 
-#### onX [HOLD]
-
-`onX(button: ButtonDetails)`
-
-#### onY [HOLD]
-
-`onY(button: ButtonDetails)`
-
-#### onStart [HOLD]
-
-`onStart(button: ButtonDetails)`
-
-#### onSelect [HOLD]
-
-`onSelect(button: ButtonDetails)`
-
-#### onLT [HOLD]
-
-`onLT(button: ButtonDetails)`
-
-#### onRT [HOLD]
-
-`onRT(button: ButtonDetails)`
-
-#### onLB [HOLD]
-
-`onLB(button: ButtonDetails)`
-
-#### onRB [HOLD]
-
-`onRB(button: ButtonDetails)`
-
-#### onLS [HOLD]
-
-`onLS(button: ButtonDetails)`
-
-#### onRS [HOLD]
-
-`onRS(button: ButtonDetails)`
-
-#### onDPadUp [HOLD]
-
-`onDPadUp(button: ButtonDetails)`
-
-#### onDPadDown [HOLD]
-
-`onDPadDown(button: ButtonDetails)`
-
-#### onDPadLeft [HOLD]
-
-`onDPadLeft(button: ButtonDetails)`
-
-#### onDPadRight [HOLD]
-
-`onDPadRight(button: ButtonDetails)`
-
-#### onXBoxLogo [HOLD]
-
-`onXBoxLogo(button: ButtonDetails)`
-
-#### onLeftStickRight
-
-`onLeftStickRight`
-`onLeftStickRight(axes: AxesDetails)`
-fired when the left stick moves right.
-
-#### onLeftStickLeft
-
-`onLeftStickLeft`
-`onLeftStickLeft(axes: AxesDetails)`
-
-#### onLeftStickUp
-
-`onLeftStickUp`
-`onLeftStickUp(axes: AxesDetails)`
-
-#### onLeftStickDown
-
-`onLeftStickDown`
-`onLeftStickDown(axes: AxesDetails)`
-
-#### onRightStickRight
-
-`onRightStickRight`
-`onRightStickRight(axes: AxesDetails)`
-
-#### onRightStickLeft
-
-`onRightStickLeft`
-`onRightStickLeft(axes: AxesDetails)`
-
-#### onRightStickUp
-
-`onRightStickUp`
-`onRightStickUp(axes: AxesDetails)`
-
-#### onRightStickDown
-
-`onRightStickDown`
-`onRightStickDown(axes: AxesDetails)`
+---
 
 #### onKonamiSuccess
 
 `onKonamiSuccess()`
-Fired when someone correctly enters to konami code.
+Fired when the Konami code (↑↑↓↓←→←→BA) is entered.
+
+---
+
+### Return value
+
+```ts
+{
+  gamepad: ReactGamepad | undefined;
+  rumble: (options: RumbleOptions) => Promise<void>;
+}
+```
+
+#### rumble
+
+Triggers haptic feedback via `GamepadHapticActuator.playEffect`. No-ops silently if the browser or controller does not support haptics.
+
+```ts
+interface RumbleOptions {
+  duration: number;       // ms
+  weakMagnitude?: number;   // 0–1, default 0.5
+  strongMagnitude?: number; // 0–1, default 0.5
+  startDelay?: number;    // ms, default 0
+}
+```
+
+Example:
+
+```tsx
+const { rumble } = useGamepads();
+
+// Short strong pulse on hit
+rumble({ duration: 100, strongMagnitude: 1.0, weakMagnitude: 0.3 });
+
+// Gentle continuous vibration
+rumble({ duration: 500, strongMagnitude: 0.2, weakMagnitude: 0.2 });
+```
+
+---
 
 ### Events
 
-#### gamepadconnected
+Custom DOM events dispatched on `document`:
 
-`gamepadconnected`
-Dispatched when the gamepad connects. Will be triggered at least once after the Gamepad component is mounted.
+| Event | Fired when |
+|---|---|
+| `gamepadconnected` | Gamepad connects |
+| `gamepaddisconnected` | Gamepad disconnects |
+| `gamepadupdated` | Each poll cycle |
+| `gamepadbuttondown` | Any button pressed |
+| `gamepadbuttonup` | Any button released |
+| `gamepadbuttonchange` | Any button state change |
+| `axeschange` | Any axis moves |
+| `leftStickXRight` | Left stick past threshold right |
+| `leftStickXLeft` | Left stick past threshold left |
+| `leftStickYUp` | Left stick past threshold up |
+| `leftStickYDown` | Left stick past threshold down |
+| `rightStickXRight` | Right stick past threshold right |
+| `rightStickXLeft` | Right stick past threshold left |
+| `rightStickYUp` | Right stick past threshold up |
+| `rightStickYDown` | Right stick past threshold down |
 
-#### gamepaddisconnected
+All events include `detail: { gamepad: number, buttonDetails | axes }`.
 
-`gamepaddisconnected`
-Dispatched when the gamepad disconnects.
+---
 
-#### gamepadupdated
+## TypeScript Interfaces
 
-`gamepadupdated`
-Dispatched whenever the gamepad is updated. This hook is setup to use the requestAnimationFrame and so it updates 60 times per second or every 0.0167s.
+### ButtonDetails
 
-#### gamepadbuttondown
+```ts
+interface ButtonDetails {
+  buttonIndex: number;
+  buttonName: string;
+  pressed: boolean;
+  touched: boolean;
+  value: string;
+}
+```
 
-`gamepadbuttondown`
-Dispatched on (at the beginning of) a button press.
+### AxesDetails
 
-#### gamepadbuttonup
+```ts
+interface AxesDetails {
+  axesIndex: number;
+  axesName: string;
+  value: number;
+  previousValue: number;
+}
+```
 
-`gamepadbuttonup`
-Dispatched when there is a state change in the button. This could be either a button down or up event.
+### RumbleOptions
 
-#### gamepadbuttonchange
+```ts
+interface RumbleOptions {
+  duration: number;
+  weakMagnitude?: number;
+  strongMagnitude?: number;
+  startDelay?: number;
+}
+```
 
-`gamepadbuttonchange`
-Dispatched when there is a state change in the button. This could be either a button down or up event.
+---
 
-#### axeschange
+## XBox Controller Layout
 
-`axeschange`
-Dispatched when there is a state change in the axes.
+| Button | Index |
+|---|---|
+| A | 0 |
+| B | 1 |
+| X | 2 |
+| Y | 3 |
+| LB | 4 |
+| RB | 5 |
+| LT | 6 |
+| RT | 7 |
+| Select | 8 |
+| Start | 9 |
+| LS (Left Stick Click) | 10 |
+| RS (Right Stick Click) | 11 |
+| DPadUp | 12 |
+| DPadDown | 13 |
+| DPadLeft | 14 |
+| DPadRight | 15 |
+| Xbox | 16 |
 
-#### leftStickXRight
-
-`leftStickXRight`
-fired when the left stick moves right.
-
-#### leftStickXLeft
-
-`leftStickXLeft`
-
-#### leftStickYUp
-
-`leftStickYUp`
-
-#### leftStickYDown
-
-`leftStickYDown`
-
-#### rightStickXRight
-
-`rightStickXRight`
-
-#### rightStickXLeft
-
-`rightStickXLeft`
-
-#### rightStickYUp
-
-`rightStickYUp`
-
-#### rightStickYDown
-
-`rightStickYDown`
-
-## Context Usage
-
-### API
-
-[HOLD]
-
-### Events
-
-[HOLD]
-
-### Examples
-
-[HOLD]
-
-## HOC Usage
-
-### API
-
-[HOLD]
-
-### Events
-
-[HOLD]
-
-### Examples
-
-[HOLD]
+---
 
 ## Motivation
 
 I was curious as to how I could use the Gamepad API in a react app and stumbled across [this blog post](https://whoisryosuke.com/blog/2020/adding-game-controller-input-to-react/) by [Ryosuke](https://github.com/whoisryosuke). He explained everything he did to build his library [react-gamepads](https://www.npmjs.com/package/react-gamepads) in extreme detail.
 
-I really wanted to be able to detect a sequence of button presses though (for example, if someone entered the [konami code](https://en.wikipedia.org/wiki/Konami_Code)). In order to do that I had to create an API that allowed me to do something `onGamepadButtonUp` or `onGamepadButtonDown`.
+I really wanted to be able to detect a sequence of button presses (for example, the [Konami code](https://en.wikipedia.org/wiki/Konami_Code)). In order to do that I had to create an API that allowed me to fire on `onGamepadButtonUp` or `onGamepadButtonDown`.
 
 ## Contributing
 
 Yes. Do it. All about that.
-
-#### How to contribute
 
 1. Fork the project
 2. Create a feature branch (`git checkout -b f/amazingFeature`)
@@ -386,96 +373,19 @@ Yes. Do it. All about that.
 Distributed under the MIT License. See LICENSE for more information.
 <br />
 
-## Other APIs
-
-### Gamepad
-
-This is the Gamepad object of a Microsoft Xbox 360 controller. It has the following API:
-
-| Property    | Description                                                                                                                          | Type                   | Access     | Default | Required |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------ | ---------------------- | ---------- | ------- | -------- |
-| `id`        | This string contains identifying information about the gamepad.                                                                      | `string`               | `readonly` | null    | N/A      |
-| `index`     | This is a unique auto-incremented integer for each gamepad.                                                                          | `number`               | `readonly` | null    | N/A      |
-| `connected` | This is a boolean that indicates the gamepad’s connectivity.                                                                         | `boolean`              | `readonly` | null    | N/A      |
-| `mapping`   | This string tells us whether the browser has remapped the device to a known layout                                                   | `string`               | `readonly` | null    | N/A      |
-| `timestamp` | This increments when the device’s state changes. Some devices constantly poll, which means the timestamp is constantly incrementing. | `number`               | `readonly` | null    | N/A      |
-| `axes`      | This is a collection of numbers that represent the state of each analogue stick or button.                                           | `Array<Number>`        | `readonly` | null    | N/A      |
-| `buttons`   | This collection of objects represents the state of each button.                                                                      | `Array<GamepadButton>` | `readonly` | null    | N/A      |
-
-### React Gamepad
-
-This is a custom, extended Gamepad. It has the following _additional_ API:
-
-| Property            | Description                                                                                                                                                                                    | Type                    | Access     | Default | Required |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- | ---------- | ------- | -------- |
-| `vibrationActuator` | The GamepadHapticActuator interface of the Gamepad API represents hardware in the controller designed to provide haptic feedback to the user (if available), most commonly vibration hardware. | `GamepadHapticActuator` | `readonly` | null    | N/A      |
-
-### ButtonDetails Interface
-
-```ts
-buttonIndex: number;
-buttonName: string;
-pressed: boolean;
-touched: boolean;
-value: string;
-```
-
-### AxesDetails Interface
-
-```ts
-interface AxesDetails {
-  axesIndex: number;
-  axesName: string;
-  value: number;
-  previousValue: number;
-}
-```
-
-## XBox Controller Layout
-
-| button    | button `.pressed` code and index                  |
-| --------- | ------------------------------------------------- |
-| A         | gamepad.buttons[0].pressed                        |
-| B         | gamepad.buttons[1].pressed                        |
-| X         | gamepad.buttons[2].pressed                        |
-| Y         | gamepad.buttons[3].pressed                        |
-| LB        | gamepad.buttons[4].pressed                        |
-| RB        | gamepad.buttons[5].pressed                        |
-| LT        | gamepad.buttons[6].pressed                        |
-| RT        | gamepad.buttons[7].pressed                        |
-| Select    | gamepad.buttons[8].pressed                        |
-| Start     | gamepad.buttons[9].pressed                        |
-| LS        | gamepad.buttons[10].pressed (Left Stick Pressed)  |
-| RS        | gamepad.buttons[11].pressed (Right Stick Pressed) |
-| DPadUp    | gamepad.buttons[12].pressed                       |
-| DPadDown  | gamepad.buttons[13].pressed                       |
-| DPadLeft  | gamepad.buttons[14].pressed                       |
-| DPadRight | gamepad.buttons[15].pressed                       |
-| Xbox      | gamepad.buttons[16].pressed                       |
-
 ## References
 
 ### Official Docs
 
 - [MDN - Gamepad API](https://developer.mozilla.org/en-US/docs/Web/API/Gamepad_API)
 - [W3C - Gamepad](https://www.w3.org/TR/gamepad/)
-- [https://caniuse.com/gamepad](https://caniuse.com/gamepad)
-- []()
+- [caniuse.com/gamepad](https://caniuse.com/gamepad)
 
-### Useful Blog Posts, etc.
-
-#### Gamepad
+### Useful Resources
 
 - [https://gamepad-tester.com/](https://gamepad-tester.com/)
 - [https://www.javascripture.com/Gamepad](https://www.javascripture.com/Gamepad)
 - [https://www.smashingmagazine.com/2015/11/gamepad-api-in-web-games/](https://www.smashingmagazine.com/2015/11/gamepad-api-in-web-games/)
-- [https://ui.dev/web-gamepad-api/](https://ui.dev/web-gamepad-api/)
-- [https://www.developerdrive.com/how-to-enhance-html5-gaming-with-the-gamepad-api/](https://www.developerdrive.com/how-to-enhance-html5-gaming-with-the-gamepad-api/)
-
-#### Events
-
-- [https://javascript.info/dispatch-events](https://javascript.info/dispatch-events)
-- [https://app.pluralsight.com/guides/event-listeners-in-react-components](https://app.pluralsight.com/guides/event-listeners-in-react-components)
 
 ### Existing Packages
 

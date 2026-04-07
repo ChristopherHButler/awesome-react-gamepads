@@ -12,37 +12,37 @@ This library and [cdbx.ai](https://cdbx.ai) (an in-development web-based develop
 
 ---
 
-## Phase 1 — Fix the Foundation
+## Phase 1 — Fix the Foundation ✅
 
 > Get the house in order before adding rooms.
 
-- [ ] Remove `src/` from `.gitignore` and commit all source files
-- [ ] Fix `package.json` — remove the stray React Native packages from `dependencies`
-- [ ] Create `jestconfig.json` and write tests:
+- [x] Remove `src/` from `.gitignore` and commit all source files
+- [x] Fix `package.json` — remove the stray React Native packages from `dependencies`
+- [x] Create `jestconfig.json` and write tests:
   - Button state transitions (down → up → change)
   - Dead zone math (values below threshold round to 0)
   - Konami code sequence detection
   - Axes change detection
-- [ ] Add SSR / Next.js compatibility — guard all `navigator` and `window` calls with `typeof window !== 'undefined'` so the hook does not throw in server-rendered apps
-- [ ] Remove the "⚠️ UNDER DEVELOPMENT ⚠️" banner from README
-- [ ] Replace the `tslint` setup with `eslint` (TSLint has been deprecated since 2019)
+- [x] Add SSR / Next.js compatibility — guard all `navigator` and `window` calls with `typeof window !== 'undefined'` so the hook does not throw in server-rendered apps
+- [x] Remove the "⚠️ UNDER DEVELOPMENT ⚠️" banner from README
+- [x] Replace the `tslint` setup with `eslint` (TSLint has been deprecated since 2019)
 
 **Exit criteria:** `npm run test`, `npm run lint`, and `npm run build` all pass cleanly. Hook works in a Next.js app without SSR errors.
 
 ---
 
-## Phase 2 — Complete the Hook API
+## Phase 2 — Complete the Hook API ✅
 
 > Deliver everything that is currently marked `[HOLD]`, plus features no competitor has.
 
-- [ ] Implement per-button callbacks: `onA`, `onB`, `onX`, `onY`, `onStart`, `onSelect`, `onLB`, `onRB`, `onLT`, `onRT`, `onLS`, `onRS`, `onDPadUp`, `onDPadDown`, `onDPadLeft`, `onDPadRight`, `onXBoxLogo`
-- [ ] Add **haptic/vibration support** — expose a `rumble` function on the hook return value wrapping `GamepadHapticActuator.playEffect()`. No other React gamepad package does this.
-- [ ] Add **button hold / long-press detection** — `onGamepadButtonHold` callback with a configurable `holdThreshold` (ms). Distinguishes tap vs. hold (e.g. tap A to jump, hold A to charge).
-- [ ] Add **polling rate control** — a `pollRate` option (ms) for use cases that don't need 60fps (UI navigation, accessibility). Default keeps `requestAnimationFrame` behaviour.
-- [ ] Add `useGamepad(index: number)` — a single-controller variant of the hook for multiplayer use cases
-- [ ] Add dead zone presets: accept `"none" | "small" | "medium" | "large"` in addition to raw numbers
-- [ ] Add `useDebugValue` inside the hook so gamepad state displays correctly in React DevTools
-- [ ] Update README — remove all `[HOLD]` markers, document new APIs
+- [x] Implement per-button callbacks: `onA`, `onB`, `onX`, `onY`, `onStart`, `onSelect`, `onLB`, `onRB`, `onLT`, `onRT`, `onLS`, `onRS`, `onDPadUp`, `onDPadDown`, `onDPadLeft`, `onDPadRight`, `onXBoxLogo`
+- [x] Add **haptic/vibration support** — expose a `rumble` function on the hook return value wrapping `GamepadHapticActuator.playEffect()`. No other React gamepad package does this.
+- [x] Add **button hold / long-press detection** — `onGamepadButtonHold` callback with a configurable `holdThreshold` (ms). Distinguishes tap vs. hold (e.g. tap A to jump, hold A to charge).
+- [x] Add **polling rate control** — a `pollRate` option (ms) for use cases that don't need 60fps (UI navigation, accessibility). Default keeps `requestAnimationFrame` behaviour.
+- [x] Add `useGamepad(index: number)` — a single-controller variant of the hook for multiplayer use cases
+- [x] Add dead zone presets: accept `"none" | "small" | "medium" | "large"` in addition to raw numbers
+- [x] Add `useDebugValue` inside the hook so gamepad state displays correctly in React DevTools
+- [x] Update README — remove all `[HOLD]` markers, document new APIs
 
 **Exit criteria:** Full Props API is implemented with no placeholders remaining.
 

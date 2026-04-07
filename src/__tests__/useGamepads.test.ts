@@ -79,7 +79,7 @@ describe('useGamepads — SSR safety', () => {
       const { result: r } = renderHook(() => useGamepads());
       result = r;
     }).not.toThrow();
-    expect(result?.current).toBeUndefined();
+    expect(result?.current?.gamepad).toBeUndefined();
   });
 });
 

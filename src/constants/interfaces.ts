@@ -17,3 +17,10 @@ export interface AxesDetails {
 export interface ReactGamepad extends Gamepad {
   vibrationActuator?: GamepadHapticActuator;
 }
+
+export interface RumbleOptions {
+  duration: number;
+  weakMagnitude?: number;
+  strongMagnitude?: number;
+  startDelay?: number;
+}
