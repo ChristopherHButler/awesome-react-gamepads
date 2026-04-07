@@ -97,6 +97,58 @@ useGamepadSequence(['A', 1, 0], () => doSomething());
 
 **Returns:** `{ reset: () => void }` — call to manually clear progress.
 
+### GamepadsProvider + useGamepadsContext
+
+Mount one `GamepadsProvider` at the top of your tree. Every descendant can then call `useGamepadsContext()` — no prop-drilling, one polling loop.
+
+```tsx
+import { GamepadsProvider, useGamepadsContext } from 'awesome-react-gamepads';
+
+function App() {
+  return (
+    <GamepadsProvider controllerProfile="playstation" onA={() => jump()}>
+      <Game />
+    </GamepadsProvider>
+  );
+}
+
+function HUD() {
+  const { gamepad, buttonLabels, rumble } = useGamepadsContext();
+  return (
+    <div>
+      <p>Press {buttonLabels.A} to fire</p>
+      <button onClick={() => rumble({ duration: 200 })}>Rumble</button>
+    </div>
+  );
+}
+```
+
+`useGamepadsContext` throws a descriptive error if called outside a `<GamepadsProvider>`.
+
+`GamepadsProvider` accepts all the same props as `useGamepads`.
+
+### withGamepads
+
+HOC for class components (or any component that can't call hooks directly). Requires a `GamepadsProvider` ancestor.
+
+```tsx
+import { withGamepads, WithGamepadsProps, GamepadsProvider } from 'awesome-react-gamepads';
+
+interface OwnProps { playerName: string }
+
+class PlayerHUD extends React.Component<OwnProps & WithGamepadsProps> {
+  render() {
+    const { playerName, gamepad, buttonLabels } = this.props;
+    return <p>{playerName}: press {buttonLabels.A} to jump</p>;
+  }
+}
+
+export default withGamepads(PlayerHUD);
+
+// In App:
+// <GamepadsProvider><PlayerHUD playerName="P1" /></GamepadsProvider>
+```
+
 ### useGamepad(index)
 
 Tracks a single gamepad by index. Useful for local multiplayer:

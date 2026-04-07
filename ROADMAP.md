@@ -75,13 +75,13 @@ This library and [cdbx.ai](https://cdbx.ai) (an in-development web-based develop
 
 ---
 
-## Phase 5 — Context & HOC
+## Phase 5 — Context & HOC ✅
 
 > Match what `react-gamepads` planned but never finished.
 
-- [ ] Publish `GamepadsContext` and `GamepadsProvider` — wraps the hook so the full gamepad state is available anywhere in the tree without prop drilling
-- [ ] Publish HOC `withGamepads(Component)` — for class components and simpler wrapping use cases
-- [ ] Update README with Context and HOC usage examples
+- [x] Publish `GamepadsContext` and `GamepadsProvider` — wraps the hook so the full gamepad state is available anywhere in the tree without prop drilling
+- [x] Publish HOC `withGamepads(Component)` — for class components and simpler wrapping use cases
+- [x] Update README with Context and HOC usage examples
 
 **Exit criteria:** All three APIs (hook, context, HOC) are exported and documented.
 
