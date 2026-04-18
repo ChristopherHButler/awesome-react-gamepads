@@ -10,10 +10,7 @@
     "noEmit": true,
     "isolatedModules": true,
     "allowImportingTsExtensions": true,
-    "resolveJsonModule": true,
-    "paths": {
-      "awesome-react-gamepads": ["../src/index.ts"]
-    }
+    "resolveJsonModule": true
   },
-  "include": ["src", "../src"]
+  "include": ["src"]
 }
