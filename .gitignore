@@ -2,6 +2,7 @@ node_modules
 lib
 /demo/node_modules
 /demo/build
+/demo/dist
 
 # Claude Code
 .claude/

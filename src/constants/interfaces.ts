@@ -14,8 +14,8 @@ export interface AxesDetails {
   previousValue: number;
 }
 
-export interface ReactGamepad extends Gamepad {
-  vibrationActuator?: GamepadHapticActuator;
+export interface ReactGamepad extends Omit<Gamepad, 'vibrationActuator'> {
+  vibrationActuator?: GamepadHapticActuator | null;
 }
 
 export interface RumbleOptions {

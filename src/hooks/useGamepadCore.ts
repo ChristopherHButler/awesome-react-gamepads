@@ -169,6 +169,7 @@ export function useGamepadCore(
   const requestRef = useRef<number>(0);
   const pressedAt = useRef<Record<string, number>>({});
   const holdFired = useRef<Record<string, boolean>>({});
+  const dirtyRef = useRef(false);
 
   // onKonamiSuccess is a convenience wrapper over SequenceMatcher
   const konamiCallbackRef = useRef(onKonamiSuccess);
@@ -238,7 +239,13 @@ export function useGamepadCore(
     if (!buttonName || currentGamepadState.current.buttons[buttonName] === undefined) return;
 
     const { pressed, touched, value } = button;
-    const wasPressed = currentGamepadState.current.buttons[buttonName].pressed;
+    const prev = currentGamepadState.current.buttons[buttonName];
+    const wasPressed = prev.pressed;
+
+    // Mark dirty on any change: press state OR analog value (e.g. trigger squeeze)
+    if (wasPressed !== pressed || prev.value !== value) {
+      dirtyRef.current = true;
+    }
 
     if (wasPressed !== pressed) {
       const buttonDetails: ButtonDetails = {
@@ -300,6 +307,7 @@ export function useGamepadCore(
     const axesName = invert ? rawName.substr(1) : rawName;
 
     if (currentGamepadState.current.axes[axesName] !== newValue) {
+      dirtyRef.current = true;
       const previousValue = currentGamepadState.current.axes[axesName];
       const axesDetails: AxesDetails = { axesIndex, axesName, value: newValue, previousValue };
 
@@ -334,6 +342,7 @@ export function useGamepadCore(
 
   const updateGamepad = useCallback((gamepad: Gamepad) => {
     rawGamepadRef.current = gamepad;
+    dirtyRef.current = false;
     const { buttons, axes } = gamepad;
     for (let i = 0; i < buttons.length; i++) {
       updateButton(i, buttons[i]);
@@ -341,8 +350,10 @@ export function useGamepadCore(
     for (let i = 0; i < axes.length; i++) {
       updateAxes(i, axes[i]);
     }
-    addGamepad(gamepad);
-    onUpdate(currentGamepadState.current);
+    if (dirtyRef.current) {
+      addGamepad(gamepad);
+      onUpdate(currentGamepadState.current);
+    }
   }, [updateButton, updateAxes, addGamepad, onUpdate]);
 
   const scanGamepads = useCallback(() => {
@@ -386,6 +397,7 @@ export function useGamepadCore(
     rawGamepadRef.current = null;
     delete gamepads.current[e.gamepad.index];
     onDisconnect(e.gamepad);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [indexFilter, onDisconnect]);
 
   useEffect(() => {
@@ -401,7 +413,9 @@ export function useGamepadCore(
   }, [disconnectGamepadHandler]);
 
   const onAnimationFrameUpdate = useCallback(() => {
-    if (!('ongamepadconnected' in window)) updateGamepads();
+    // The Gamepad API has no push events for button/axis state — polling is always required.
+    // (gamepadconnected/gamepaddisconnected are connection events only, not input events.)
+    updateGamepads();
     requestRef.current = requestAnimationFrame(onAnimationFrameUpdate);
   }, [updateGamepads]);
 

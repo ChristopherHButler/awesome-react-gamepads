@@ -1,5 +1,6 @@
 import { renderHook, act } from '@testing-library/react';
 import { useGamepadSequence } from '../hooks/useGamepadSequence';
+import { translateSequence } from '../models/ControllerProfiles';
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -204,13 +205,11 @@ describe('useGamepadSequence — controller profiles', () => {
 
 describe('translateSequence utility', () => {
   it('maps Xbox names to PlayStation names', () => {
-    const { translateSequence } = require('../models/ControllerProfiles');
     expect(translateSequence(['A', 'B', 'DPadUp'], 'xbox', 'playstation'))
       .toEqual(['Cross', 'Circle', 'DPadUp']);
   });
 
   it('maps Xbox names to Switch names', () => {
-    const { translateSequence } = require('../models/ControllerProfiles');
     // Xbox A (index 0) → Switch B
     // Xbox B (index 1) → Switch A
     expect(translateSequence(['A', 'B'], 'xbox', 'switch'))
@@ -218,7 +217,6 @@ describe('translateSequence utility', () => {
   });
 
   it('is a no-op for same profile', () => {
-    const { translateSequence } = require('../models/ControllerProfiles');
     const seq = ['A', 'B', 'X'];
     expect(translateSequence(seq, 'xbox', 'xbox')).toBe(seq);
   });
