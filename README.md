@@ -8,6 +8,12 @@
 
 `awesome-react-gamepads` is a lightweight React hook library that wraps the native browser [Gamepad API](https://developer.mozilla.org/en-US/docs/Web/API/Gamepad_API/Using_the_Gamepad_API). It handles the polling loop, dead zones, button hold detection, haptics, controller profiles, and custom DOM events so you can focus on building your game or UI.
 
+## Demo
+
+**[Live demo →](https://awesome-react-gamepads-demo.vercel.app/)**
+
+Connect a gamepad and explore the controller visualizer, docs, and playable games built with the library.
+
 ## Features
 
 - `useGamepads` — track all connected gamepads with a full callback and event API
