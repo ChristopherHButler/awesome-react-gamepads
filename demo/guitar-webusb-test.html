@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>X-plorer WebUSB test</title>
+<style>
+  body { font: 14px/1.4 -apple-system, system-ui, sans-serif; margin: 2rem; background: #111; color: #eee; }
+  button { font-size: 16px; padding: .6rem 1.2rem; cursor: pointer; }
+  #status { margin: 1rem 0; color: #9cf; }
+  #raw { font-family: ui-monospace, Menlo, monospace; color: #aaa; }
+  .row { display: flex; gap: .5rem; margin: 1rem 0; flex-wrap: wrap; }
+  .fret { width: 70px; height: 70px; border-radius: 8px; opacity: .25; display: flex; align-items: center; justify-content: center; font-weight: 600; color: #000; }
+  .fret.on { opacity: 1; box-shadow: 0 0 16px currentColor; }
+  .pill { padding: .4rem .8rem; border-radius: 999px; background: #333; opacity: .4; }
+  .pill.on { background: #4c4; color: #000; opacity: 1; }
+  table { border-collapse: collapse; margin-top: 1rem; }
+  td { padding: 2px 10px; border-bottom: 1px solid #333; font-family: ui-monospace, Menlo, monospace; }
+  meter { width: 200px; }
+</style>
+</head>
+<body>
+<h1>Guitar Hero X-plorer: WebUSB raw input</h1>
+<p>Reads the Xbox 360 (XInput) USB report directly, bypassing the Gamepad API (macOS has no driver for it).</p>
+<button id="connect">Connect guitar</button>
+<div id="status">Not connected.</div>
+
+<div class="row">
+  <div class="fret" id="green"  style="background:#2c2">GREEN</div>
+  <div class="fret" id="red"    style="background:#e33">RED</div>
+  <div class="fret" id="yellow" style="background:#ee3">YELLOW</div>
+  <div class="fret" id="blue"   style="background:#36f">BLUE</div>
+  <div class="fret" id="orange" style="background:#f92">ORANGE</div>
+</div>
+<div class="row">
+  <span class="pill" id="strumUp">Strum ↑</span>
+  <span class="pill" id="strumDown">Strum ↓</span>
+  <span class="pill" id="start">Start</span>
+  <span class="pill" id="back">Back / Star power</span>
+  <span class="pill" id="guide">Guide</span>
+</div>
+<div>Whammy (right stick X): <meter id="whammy" min="-32768" max="32767"></meter> <span id="whammyV"></span></div>
+<div>Tilt (right stick Y): <meter id="tilt" min="-32768" max="32767"></meter> <span id="tiltV"></span></div>
+
+<h3>Raw report</h3>
+<div id="raw">–</div>
+
+<h3>Equivalent standard Gamepad API indices (what Chrome on Windows/Linux reports)</h3>
+<table id="std"></table>
+
+<script>
+// XInput wired report (20 bytes):
+// [0]=0x00 msg type, [1]=0x14 length
+// [2] bits: 0 dpad up, 1 dpad down, 2 dpad left, 3 dpad right, 4 start, 5 back, 6 LS, 7 RS
+// [3] bits: 0 LB, 1 RB, 2 guide, 4 A, 5 B, 6 X, 7 Y
+// [4] LT, [5] RT, [6..7] LX, [8..9] LY, [10..11] RX, [12..13] RY (int16 LE)
+const FILTERS = [{ vendorId: 0x1430 }, { classCode: 0xff, subclassCode: 0x5d }];
+const $ = id => document.getElementById(id);
+const status = msg => { $('status').textContent = msg; console.log('[xplorer]', msg); };
+
+async function open(device) {
+  status(`Opening ${device.productName} (${hex(device.vendorId)}:${hex(device.productId)})…`);
+  await device.open();
+  if (device.configuration === null) await device.selectConfiguration(1);
+
+  // Find the XInput interface (class 0xFF, subclass 0x5D, protocol 0x01) and its endpoints.
+  let iface, epIn, epOut;
+  for (const i of device.configuration.interfaces) {
+    const alt = i.alternates[0];
+    if (alt.interfaceClass === 0xff && alt.interfaceSubclass === 0x5d && alt.interfaceProtocol === 0x01) {
+      iface = i;
+      epIn = alt.endpoints.find(e => e.direction === 'in');
+      epOut = alt.endpoints.find(e => e.direction === 'out');
+      break;
+    }
+  }
+  if (!iface) {
+    iface = device.configuration.interfaces[0];
+    const alt = iface.alternates[0];
+    epIn = alt.endpoints.find(e => e.direction === 'in');
+    epOut = alt.endpoints.find(e => e.direction === 'out');
+  }
+  await device.claimInterface(iface.interfaceNumber);
+  status(`Claimed interface ${iface.interfaceNumber}, IN ep ${epIn?.endpointNumber}, OUT ep ${epOut?.endpointNumber}. Press some frets.`);
+
+  // Set player-1 LED (same as Linux xpad does). Harmless if ignored.
+  if (epOut) device.transferOut(epOut.endpointNumber, new Uint8Array([0x01, 0x03, 0x06])).catch(() => {});
+
+  while (device.opened) {
+    const r = await device.transferIn(epIn.endpointNumber, 32);
+    if (r.status === 'ok' && r.data.byteLength >= 14 && r.data.getUint8(0) === 0x00) render(r.data);
+  }
+}
+
+function render(d) {
+  const b = [...new Uint8Array(d.buffer)];
+  $('raw').textContent = b.map(x => x.toString(16).padStart(2, '0')).join(' ');
+  const lo = d.getUint8(2), hi = d.getUint8(3);
+  const s = {
+    up: !!(lo & 0x01), down: !!(lo & 0x02), left: !!(lo & 0x04), right: !!(lo & 0x08),
+    start: !!(lo & 0x10), back: !!(lo & 0x20), ls: !!(lo & 0x40), rs: !!(lo & 0x80),
+    lb: !!(hi & 0x01), rb: !!(hi & 0x02), guide: !!(hi & 0x04),
+    a: !!(hi & 0x10), b: !!(hi & 0x20), x: !!(hi & 0x40), y: !!(hi & 0x80),
+    lt: d.getUint8(4), rt: d.getUint8(5),
+    lx: d.getInt16(6, true), ly: d.getInt16(8, true), rx: d.getInt16(10, true), ry: d.getInt16(12, true),
+  };
+  const set = (id, on) => $(id).classList.toggle('on', on);
+  set('green', s.a); set('red', s.b); set('yellow', s.y); set('blue', s.x); set('orange', s.lb);
+  set('strumUp', s.up); set('strumDown', s.down);
+  set('start', s.start); set('back', s.back); set('guide', s.guide);
+  $('whammy').value = s.rx; $('whammyV').textContent = s.rx;
+  $('tilt').value = s.ry; $('tiltV').textContent = s.ry;
+
+  const std = [
+    ['0 A / green', s.a], ['1 B / red', s.b], ['2 X / blue', s.x], ['3 Y / yellow', s.y],
+    ['4 LB / orange', s.lb], ['5 RB', s.rb], ['6 LT', s.lt], ['7 RT', s.rt],
+    ['8 Back / star power', s.back], ['9 Start', s.start], ['10 LS', s.ls], ['11 RS', s.rs],
+    ['12 D-up / strum up', s.up], ['13 D-down / strum down', s.down], ['14 D-left', s.left], ['15 D-right', s.right],
+    ['16 Guide', s.guide],
+    ['axes[0] LX', s.lx], ['axes[1] LY', s.ly], ['axes[2] RX / whammy', s.rx], ['axes[3] RY / tilt', s.ry],
+  ];
+  $('std').innerHTML = std.map(([k, v]) => `<tr><td>${k}</td><td>${v === true ? '●' : v === false ? '·' : v}</td></tr>`).join('');
+}
+
+const hex = n => '0x' + n.toString(16).padStart(4, '0');
+
+$('connect').onclick = async () => {
+  if (!('usb' in navigator)) return status('WebUSB not available: use Chrome/Edge over https:// or http://localhost.');
+  try {
+    const device = await navigator.usb.requestDevice({ filters: FILTERS });
+    await open(device);
+  } catch (e) {
+    status('Error: ' + e.message);
+  }
+};
+</script>
+</body>
+</html>

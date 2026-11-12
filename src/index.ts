@@ -8,3 +8,17 @@ export type { WithGamepadsProps } from './contexts/GamepadsContext';
 export type { ButtonDetails, AxesDetails, ReactGamepad, RumbleOptions } from './constants';
 export type { ControllerProfile } from './models/ControllerProfiles';
 export { ControllerProfiles, getButtonLabels, translateSequence } from './models/ControllerProfiles';
+export { useUsbGamepads } from './hooks/useUsbGamepads';
+export type { UseUsbGamepadsReturn } from './hooks/useUsbGamepads';
+export {
+  requestUsbGamepad,
+  reconnectUsbGamepads,
+  getUsbGamepads,
+  disconnectUsbGamepads,
+  subscribeUsbGamepads,
+  isUsbGamepadSupported,
+  parseXInputReport,
+  XINPUT_USB_FILTERS,
+  MIN_PRESS_MS,
+} from './webusb/usbGamepads';
+export type { UsbGamepadInfo } from './webusb/usbGamepads';

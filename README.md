@@ -12,7 +12,7 @@
 
 **[Live demo →](https://awesome-react-gamepads-demo.vercel.app/)**
 
-Connect a gamepad and explore the controller visualizer, docs, and playable games built with the library.
+Connect a gamepad and explore the controller visualizer, docs, and playable games built with the library — including **Guitar Jam**, a Guitar Hero-style game for Xbox 360 guitars.
 
 
 ## Features
@@ -21,7 +21,9 @@ Connect a gamepad and explore the controller visualizer, docs, and playable game
 - `useGamepad(index)` — single-controller variant; use multiple instances for local multiplayer
 - `useGamepadSequence` — detect arbitrary button combos or cheat codes (Konami, fighting-game specials, etc.)
 - Context API — `GamepadsProvider`, `useGamepadsContext`, and `withGamepads` HOC; one polling loop, any depth
-- Controller profiles — `xbox`, `playstation`, `switch`, `generic`; `buttonLabels` maps button names for your UI
+- Controller profiles — `xbox`, `playstation`, `switch`, `generic`, `guitar`; `buttonLabels` maps button names for your UI
+- Guitar controllers — fret, strum, star power, whammy and tilt callbacks for Xbox 360 guitars (Guitar Hero X-plorer and compatibles)
+- macOS support for wired Xbox 360 / XInput controllers via WebUSB (`useUsbGamepads`)
 - Haptics / rumble via `rumble()` with `duration`, `weakMagnitude`, `strongMagnitude`, `startDelay`
 - Button hold / long-press detection via `onGamepadButtonHold`
 - Dead zone presets (`"none"` | `"small"` | `"medium"` | `"large"`) or a raw number
@@ -112,6 +114,11 @@ All props are optional.
 | `onRightStickUp` | `(axes: AxesDetails) => void` | — | Right stick crosses `stickThreshold` upward. |
 | `onRightStickDown` | `(axes: AxesDetails) => void` | — | Right stick crosses `stickThreshold` downward. |
 | `onKonamiSuccess` | `() => void` | — | Fired when the Konami code (↑↑↓↓←→←→BA) is entered. |
+| `onGreenFret` … `onOrangeFret` | `(button: ButtonDetails) => void` | — | Guitar fret pressed (`guitar` profile). See [Guitar Controllers](#guitar-controllers). |
+| `onStrumUp` / `onStrumDown` | `(button: ButtonDetails) => void` | — | Strum bar (`guitar` profile). |
+| `onStarPower` | `(button: ButtonDetails) => void` | `onSelect` | Star power button (`guitar` profile). |
+| `onWhamBar` | `(axes: AxesDetails) => void` | — | Whammy bar moved (`guitar` profile). |
+| `onTilt` | `(axes: AxesDetails) => void` | — | Tilt sensor changed (`guitar` profile). |
 
 Per-button callbacks (`onA`, `onB`, etc.) always refer to the same **physical button position** regardless of the active profile — `onA` always fires for button index 0 (bottom face button). Use `buttonLabels` from the return value to display the profile-correct name in your UI.
 
@@ -264,6 +271,9 @@ Pass `controllerProfile` to any hook or the `GamepadsProvider` to switch button 
 | `playstation` | Cross, Circle, Square, Triangle | L1, R1 | L2, R2 | Share, Options | PS |
 | `switch` | B, A, Y, X | L, R | ZL, ZR | Minus, Plus | Home |
 | `generic` | Button0–3 | Button4–5 | Button6–7 | Button8–9 | Button16 |
+| `guitar` | GreenFret, RedFret, BlueFret, YellowFret | OrangeFret, — | — | StarPower, Start | Xbox |
+
+The profile can be changed at runtime; button and axis state is rebuilt under the new names.
 
 The `buttonLabels` field on the return value maps Xbox names to the active profile's names. Use it to render the correct label in your UI without hardcoding profile-specific strings:
 
@@ -275,6 +285,85 @@ const { buttonLabels } = useGamepads({ controllerProfile: 'playstation' });
 ```
 
 Per-button callbacks (`onA`, `onB`, `onX`, `onY`, etc.) are always named after the Xbox layout and map to the same physical button index on every profile. `onA` fires for button index 0 regardless of whether the connected controller calls it "A", "Cross", or "B".
+
+## Guitar Controllers
+
+Xbox 360 guitars — the Guitar Hero X-plorer and compatibles — are supported with the `guitar` profile and dedicated callbacks.
+
+```tsx
+import { useGamepads, useUsbGamepads } from 'awesome-react-gamepads';
+
+function GuitarGame() {
+  const usb = useUsbGamepads(); // macOS only needs this — see below
+
+  const { gamepad } = useGamepads({
+    controllerProfile: 'guitar',
+    onGreenFret:  () => {},
+    onRedFret:    () => {},
+    onYellowFret: () => {},
+    onBlueFret:   () => {},
+    onOrangeFret: () => {},
+    onStrumUp:    () => strum(),
+    onStrumDown:  () => strum(),
+    onStarPower:  () => activateStarPower(),
+    onWhamBar:    (axes) => bend(axes.value),
+    onTilt:       (axes) => {},
+  });
+
+  return !gamepad && usb.supported
+    ? <button onClick={usb.connect}>Connect guitar</button>
+    : <Highway />;
+}
+```
+
+Guitars report the Standard Gamepad layout like any Xbox 360 pad:
+
+| Guitar | Button / axis | Name | Callback |
+|---|---|---|---|
+| Green / Red / Yellow / Blue / Orange fret | 0 / 1 / 3 / 2 / 4 | `GreenFret` … `OrangeFret` | `onGreenFret` … `onOrangeFret` |
+| Strum up / down | 12 / 13 (D-pad) | `StrumUp` / `StrumDown` | `onStrumUp` / `onStrumDown` |
+| Star power (Back) | 8 | `StarPower` | `onStarPower` (falls back to `onSelect`) |
+| Start | 9 | `Start` | `onStart` |
+| Guide | 16 | `Xbox` | `onXBoxLogo` |
+| Whammy bar | axis 2 | `Whammy` | `onWhamBar` |
+| Tilt | axis 3 | `Tilt` | `onTilt` |
+
+Fret callbacks fire on press. To know which frets are **held** when the player strums, read `gamepad.buttons.GreenFret.pressed` etc., or track `onGamepadButtonDown` / `onGamepadButtonUp`.
+
+### macOS: WebUSB
+
+macOS has no driver for Xbox 360 (XInput) devices, so the browser's Gamepad API never sees a wired guitar. `useUsbGamepads()` reads it directly over WebUSB and makes it appear in `navigator.getGamepads()` — so `useGamepads`, and any other code using the Gamepad API, works unchanged.
+
+```tsx
+const { supported, devices, connect, error } = useUsbGamepads();
+```
+
+| Field | Description |
+|---|---|
+| `supported` | `true` when WebUSB is available (Chrome / Edge / Opera, on https or `localhost`). |
+| `devices` | Connected WebUSB controllers (`UsbGamepadInfo[]`). |
+| `connect()` | Opens the browser's device picker. **Must be called from a click.** |
+| `error` | Last error from `connect()`, if any. |
+
+- The player clicks **Connect** once and picks the guitar. The permission is remembered for your site, and the guitar reconnects automatically on later visits and when it's plugged back in.
+- Not available in Safari or Firefox (no WebUSB).
+- If your game runs inside an iframe, the iframe needs `allow="usb"`.
+- On Windows and Linux the guitar already works through the Gamepad API; you don't need WebUSB there.
+- Quick presses (a strum-bar flick can last ~10 ms) are held for at least `MIN_PRESS_MS` (50 ms) so a 60 fps polling loop never misses them.
+
+### Two guitars (or more)
+
+Use one `useGamepad(index)` per player — each follows a single controller, so callbacks never mix:
+
+```tsx
+const usb = useUsbGamepads(); // macOS: click Connect once per guitar; each gets the next free slot
+const player1 = useGamepad(0, { controllerProfile: 'guitar', onStrumDown: () => strum(1) });
+const player2 = useGamepad(1, { controllerProfile: 'guitar', onStrumDown: () => strum(2) });
+```
+
+`useGamepads` (plural) merges every connected controller into one state, so it isn't suited to local multiplayer.
+
+Not using React? The same functions are exported on their own: `requestUsbGamepad()` (from a click), `reconnectUsbGamepads()`, `getUsbGamepads()`, `disconnectUsbGamepads()`, `subscribeUsbGamepads(listener)` and `isUsbGamepadSupported()`.
 
 ## Haptics / Rumble
 
@@ -367,6 +456,8 @@ import type {
   RumbleOptions,
   ControllerProfile,
   WithGamepadsProps,
+  UseUsbGamepadsReturn,
+  UsbGamepadInfo,
 } from 'awesome-react-gamepads';
 ```
 
@@ -397,12 +488,12 @@ interface AxesDetails {
 }
 ```
 
-Valid `axesName` values: `LeftStickX`, `LeftStickY`, `RightStickX`, `RightStickY`, `LeftTrigger`, `RightTrigger`.
+Valid `axesName` values: `LeftStickX`, `LeftStickY`, `RightStickX`, `RightStickY`, `LeftTrigger`, `RightTrigger` — or `Whammy`, `Tilt` with the `guitar` profile.
 
 ### `ControllerProfile`
 
 ```ts
-type ControllerProfile = 'xbox' | 'playstation' | 'switch' | 'generic';
+type ControllerProfile = 'xbox' | 'playstation' | 'switch' | 'generic' | 'guitar';
 ```
 
 ## Browser Compatibility
@@ -413,6 +504,8 @@ type ControllerProfile = 'xbox' | 'playstation' | 'switch' | 'generic';
 | Edge | Full | Gamepad API and haptics both supported |
 | Firefox | Partial | Gamepad API supported; haptics API not available — `rumble` is a no-op |
 | Safari | Partial | Gamepad API support is limited; haptics not available — `rumble` is a no-op |
+
+Wired Xbox 360 / XInput controllers (including guitars) aren't visible to the Gamepad API on macOS; use [`useUsbGamepads`](#macos-webusb) in Chrome or Edge.
 
 `rumble` catches all errors internally and never throws, so it is safe to call on any browser without wrapping in a try/catch.
 
