@@ -8,3 +8,5 @@ lib
 .claude/
 CLAUDE.md
 ROADMAP.md
+# tsc compile output (npm run compile)
+dist/

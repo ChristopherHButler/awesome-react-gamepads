@@ -74,6 +74,19 @@ export interface UseGamepadsProps {
   onRightStickDown?: (axes: AxesDetails) => void;
 
   onKonamiSuccess?: () => void;
+
+  // Guitar-specific callbacks — used when controllerProfile is 'guitar'
+  onGreenFret?: (button: ButtonDetails) => void;
+  onRedFret?: (button: ButtonDetails) => void;
+  onYellowFret?: (button: ButtonDetails) => void;
+  onBlueFret?: (button: ButtonDetails) => void;
+  onOrangeFret?: (button: ButtonDetails) => void;
+  onStrumDown?: (button: ButtonDetails) => void;
+  onStrumUp?: (button: ButtonDetails) => void;
+  /** Star power button (Back/Select on the guitar). Falls back to `onSelect`. */
+  onStarPower?: (button: ButtonDetails) => void;
+  onWhamBar?: (axes: AxesDetails) => void;
+  onTilt?: (axes: AxesDetails) => void;
 }
 
 export interface UseGamepadsReturn {
@@ -92,6 +105,14 @@ function buildInitialButtonState(profile: ControllerProfile): Record<string, { p
   const result: Record<string, typeof emptyButton> = {};
   for (const name of ControllerProfiles[profile].buttons) {
     if (name) result[name] = { ...emptyButton };
+  }
+  return result;
+}
+
+function buildInitialAxesState(profile: ControllerProfile): Record<string, number> {
+  const result: Record<string, number> = {};
+  for (const raw of ControllerProfiles[profile].axes) {
+    if (raw) result[raw[0] === '-' ? raw.slice(1) : raw] = 0;
   }
   return result;
 }
@@ -137,6 +158,11 @@ export function useGamepadCore(
     onRightStickUp = NOOP, onRightStickDown = NOOP,
 
     onKonamiSuccess = NOOP,
+
+    onGreenFret = NOOP, onRedFret = NOOP, onYellowFret = NOOP, onBlueFret = NOOP, onOrangeFret = NOOP,
+    onStrumDown = NOOP, onStrumUp = NOOP,
+    onStarPower = onSelect,
+    onWhamBar = NOOP, onTilt = NOOP,
   } = props;
 
   const deadZone = typeof deadZoneOption === 'string'
@@ -152,14 +178,7 @@ export function useGamepadCore(
     mapping: '',
     vibrationActuator: '',
     buttons: buildInitialButtonState(controllerProfile),
-    axes: {
-      LeftStickX: 0.0,
-      LeftStickY: 0.0,
-      RightStickX: 0.0,
-      RightStickY: 0.0,
-      RightTrigger: 0.0,
-      LeftTrigger: 0.0,
-    },
+    axes: buildInitialAxesState(controllerProfile),
   };
 
   const currentGamepadState = useRef<any>(INITIAL_GAMEPAD_STATE);
@@ -182,6 +201,20 @@ export function useGamepadCore(
     konamiMatcher.current.setSequence(translateSequence(konamiCodeSequence, 'xbox', controllerProfile));
   }, [controllerProfile]);
 
+  // Switching profile at runtime: rebuild button/axes state under the new profile's names.
+  const mountedProfile = useRef(controllerProfile);
+  useEffect(() => {
+    if (mountedProfile.current === controllerProfile) return;
+    mountedProfile.current = controllerProfile;
+    currentGamepadState.current = {
+      ...currentGamepadState.current,
+      buttons: buildInitialButtonState(controllerProfile),
+      axes: buildInitialAxesState(controllerProfile),
+    };
+    pressedAt.current = {};
+    holdFired.current = {};
+  }, [controllerProfile]);
+
   const [gp, setGp] = useState<ReactGamepad | undefined>(undefined);
 
   const debugLabel = indexFilter !== undefined
@@ -199,16 +232,26 @@ export function useGamepadCore(
     onXBoxLogo,
   ];
 
+  // Guitar callbacks indexed by Standard Gamepad button index (see the 'guitar' profile).
+  const guitarCallbacksByIndex = [
+    onGreenFret, onRedFret, onBlueFret, onYellowFret,
+    onOrangeFret, NOOP, NOOP, NOOP,
+    onStarPower, onStart, NOOP, NOOP,
+    onStrumUp, onStrumDown, onDPadLeft, onDPadRight,
+    onXBoxLogo,
+  ];
+
   const perButtonCallbacks = useRef<Record<string, (b: ButtonDetails) => void>>({});
   useEffect(() => {
     const map: Record<string, (b: ButtonDetails) => void> = {};
-    for (let i = 0; i < xboxCallbacksByIndex.length; i++) {
+    const callbacksByIndex = controllerProfile === 'guitar' ? guitarCallbacksByIndex : xboxCallbacksByIndex;
+    for (let i = 0; i < callbacksByIndex.length; i++) {
       const profileName = profileDef.buttons[i];
-      if (profileName) map[profileName] = xboxCallbacksByIndex[i];
+      if (profileName) map[profileName] = callbacksByIndex[i];
     }
     perButtonCallbacks.current = map;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [controllerProfile, onA, onB, onX, onY, onLB, onRB, onLT, onRT, onSelect, onStart, onLS, onRS, onDPadUp, onDPadDown, onDPadLeft, onDPadRight, onXBoxLogo]);
+  }, [controllerProfile, onA, onB, onX, onY, onLB, onRB, onLT, onRT, onSelect, onStart, onLS, onRS, onDPadUp, onDPadDown, onDPadLeft, onDPadRight, onXBoxLogo, onGreenFret, onRedFret, onYellowFret, onBlueFret, onOrangeFret, onStrumDown, onStrumUp, onStarPower]);
 
   const addGamepad = useCallback((gamepad: any) => {
     currentGamepadState.current = {
@@ -236,10 +279,11 @@ export function useGamepadCore(
 
   const updateButton = useCallback((buttonIndex: number, button: GamepadButton) => {
     const buttonName = profileDef.buttons[buttonIndex];
-    if (!buttonName || currentGamepadState.current.buttons[buttonName] === undefined) return;
+    if (!buttonName) return;
 
     const { pressed, touched, value } = button;
-    const prev = currentGamepadState.current.buttons[buttonName];
+    // May be missing right after a profile switch — treat as released.
+    const prev = currentGamepadState.current.buttons[buttonName] ?? { pressed: false, touched: false, value: 0 };
     const wasPressed = prev.pressed;
 
     // Mark dirty on any change: press state OR analog value (e.g. trigger squeeze)
@@ -316,6 +360,9 @@ export function useGamepadCore(
       }
       onGamepadAxesChange(axesDetails);
 
+      if (axesName === 'Whammy') onWhamBar(axesDetails);
+      if (axesName === 'Tilt') onTilt(axesDetails);
+
       if (axesName === 'LeftStickX') {
         if (previousValue <= stickThreshold && newValue > stickThreshold) { if (isBrowser) document.dispatchEvent(new CustomEvent('leftStickXRight', { bubbles: true, detail: { gamepad: currentGamepadState.current.index, axes: axesDetails } })); onLeftStickRight(axesDetails); }
         if (previousValue >= -stickThreshold && newValue < -stickThreshold) { if (isBrowser) document.dispatchEvent(new CustomEvent('leftStickXLeft', { bubbles: true, detail: { gamepad: currentGamepadState.current.index, axes: axesDetails } })); onLeftStickLeft(axesDetails); }
@@ -338,7 +385,7 @@ export function useGamepadCore(
         axes: { ...currentGamepadState.current.axes, [axesName]: newValue },
       };
     }
-  }, [deadZone, stickThreshold, profileDef, onGamepadAxesChange, onLeftStickRight, onLeftStickLeft, onLeftStickUp, onLeftStickDown, onRightStickRight, onRightStickLeft, onRightStickUp, onRightStickDown]);
+  }, [deadZone, stickThreshold, profileDef, onGamepadAxesChange, onWhamBar, onTilt, onLeftStickRight, onLeftStickLeft, onLeftStickUp, onLeftStickDown, onRightStickRight, onRightStickLeft, onRightStickUp, onRightStickDown]);
 
   const updateGamepad = useCallback((gamepad: Gamepad) => {
     rawGamepadRef.current = gamepad;

@@ -1,4 +1,4 @@
-export type ControllerProfile = 'xbox' | 'playstation' | 'switch' | 'generic';
+export type ControllerProfile = 'xbox' | 'playstation' | 'switch' | 'generic' | 'guitar';
 
 interface ProfileDefinition {
   displayName: string;
@@ -76,6 +76,34 @@ export const ControllerProfiles: Record<ControllerProfile, ProfileDefinition> = 
       'Button16',
     ],
     axes: ['LeftStickX', '-LeftStickY', 'RightStickX', '-RightStickY', 'LeftTrigger', 'RightTrigger'],
+  },
+  guitar: {
+    displayName: 'Guitar',
+    // Xbox 360 guitars (Guitar Hero X-plorer and compatibles) are XInput devices, so the
+    // browser reports them with the Standard Gamepad layout like any Xbox 360 pad:
+    // frets on the face buttons + LB, strum on the D-pad, whammy/tilt on the right stick.
+    // Empty slots are buttons the guitar doesn't have.
+    buttons: [
+      'GreenFret',   // 0  (A)
+      'RedFret',     // 1  (B)
+      'BlueFret',    // 2  (X)
+      'YellowFret',  // 3  (Y)
+      'OrangeFret',  // 4  (LB)
+      '',            // 5
+      '',            // 6
+      '',            // 7
+      'StarPower',   // 8  (Back)
+      'Start',       // 9
+      '',            // 10
+      '',            // 11
+      'StrumUp',     // 12 (D-pad up)
+      'StrumDown',   // 13 (D-pad down)
+      'DPadLeft',    // 14
+      'DPadRight',   // 15
+      'Xbox',        // 16 (Guide)
+    ],
+    // Whammy = right stick X (axis 2), tilt = right stick Y (axis 3).
+    axes: ['', '', 'Whammy', 'Tilt'],
   },
 };
 

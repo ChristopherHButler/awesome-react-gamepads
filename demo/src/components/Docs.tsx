@@ -7,6 +7,7 @@ const toc = [
   { id: 'use-sequence',  label: 'useGamepadSequence' },
   { id: 'context',       label: 'Context & HOC' },
   { id: 'profiles',      label: 'Controller Profiles' },
+  { id: 'guitar',        label: 'Guitar Controllers' },
   { id: 'haptics',       label: 'Haptics' },
   { id: 'dead-zones',    label: 'Dead Zones' },
   { id: 'typescript',    label: 'TypeScript' },
@@ -288,7 +289,7 @@ export default withGamepads(PlayerHUD);
         <div className="docs-section" id="profiles">
           <h2 className="docs-h2">Controller Profiles</h2>
           <p className="docs-p">
-            All four profiles share the same physical Standard Gamepad layout — only the displayed
+            All profiles share the same physical Standard Gamepad layout — only the displayed
             button names differ. Set <code className="docs-inline-code">controllerProfile</code> to
             match your players' hardware so callbacks and <code className="docs-inline-code">buttonLabels</code> use familiar names.
           </p>
@@ -303,6 +304,7 @@ export default withGamepads(PlayerHUD);
               <tr><td>"playstation"</td><td>PlayStation</td><td>Cross, Circle, Square, Triangle</td><td>PS</td></tr>
               <tr><td>"switch"</td><td>Nintendo Switch</td><td>B, A, Y, X (positionally swapped)</td><td>Home</td></tr>
               <tr><td>"generic"</td><td>Generic</td><td>Button0–Button3</td><td>Button16</td></tr>
+              <tr><td>"guitar"</td><td>Guitar</td><td>GreenFret, RedFret, BlueFret, YellowFret</td><td>Xbox</td></tr>
             </tbody>
           </table>
 
@@ -336,6 +338,82 @@ export default withGamepads(PlayerHUD);
 
 <button onClick={confirm}>{buttonLabels.A} to confirm</button>
 // Renders: "Cross to confirm" on PlayStation, "A to confirm" on Xbox`}</code></pre>
+        </div>
+
+        {/* Guitar */}
+        <div className="docs-section" id="guitar">
+          <h2 className="docs-h2">Guitar Controllers</h2>
+          <p className="docs-p">
+            Xbox 360 guitars (Guitar Hero X-plorer and compatibles) use the{' '}
+            <code className="docs-inline-code">guitar</code> profile, with callbacks for frets, strum,
+            star power, whammy and tilt. Try it in <b>Games → Guitar Jam</b>.
+          </p>
+          <pre className="code-block"><code>{`const usb = useUsbGamepads(); // macOS — see below
+
+const { gamepad } = useGamepads({
+  controllerProfile: 'guitar',
+  onGreenFret: () => {}, onRedFret: () => {}, onYellowFret: () => {},
+  onBlueFret: () => {},  onOrangeFret: () => {},
+  onStrumUp: strum, onStrumDown: strum,
+  onStarPower: activateStarPower,
+  onWhamBar: (axes) => bend(axes.value),
+  onTilt: (axes) => {},
+});
+
+{!gamepad && usb.supported && <button onClick={usb.connect}>Connect guitar</button>}`}</code></pre>
+
+          <h3 className="docs-h3">Mapping</h3>
+          <table className="props-table">
+            <thead>
+              <tr><th>Guitar</th><th>Index</th><th>Name</th><th>Callback</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Green / Red / Yellow / Blue / Orange</td><td>0 / 1 / 3 / 2 / 4</td><td>GreenFret … OrangeFret</td><td>onGreenFret … onOrangeFret</td></tr>
+              <tr><td>Strum up / down</td><td>12 / 13</td><td>StrumUp / StrumDown</td><td>onStrumUp / onStrumDown</td></tr>
+              <tr><td>Star power (Back)</td><td>8</td><td>StarPower</td><td>onStarPower (falls back to onSelect)</td></tr>
+              <tr><td>Start</td><td>9</td><td>Start</td><td>onStart</td></tr>
+              <tr><td>Guide</td><td>16</td><td>Xbox</td><td>onXBoxLogo</td></tr>
+              <tr><td>Whammy bar</td><td>axis 2</td><td>Whammy</td><td>onWhamBar</td></tr>
+              <tr><td>Tilt</td><td>axis 3</td><td>Tilt</td><td>onTilt</td></tr>
+            </tbody>
+          </table>
+          <p className="docs-p">
+            Fret callbacks fire on press. To check which frets are held when the player strums, read{' '}
+            <code className="docs-inline-code">gamepad.buttons.GreenFret.pressed</code> or track{' '}
+            <code className="docs-inline-code">onGamepadButtonDown</code> / <code className="docs-inline-code">onGamepadButtonUp</code>.
+          </p>
+
+          <h3 className="docs-h3">macOS: useUsbGamepads</h3>
+          <p className="docs-p">
+            macOS has no driver for Xbox 360 (XInput) devices, so the Gamepad API never sees a wired guitar.{' '}
+            <code className="docs-inline-code">useUsbGamepads()</code> reads it over WebUSB and adds it to{' '}
+            <code className="docs-inline-code">navigator.getGamepads()</code>, so every hook — and any other Gamepad API code — works unchanged.
+          </p>
+          <table className="props-table">
+            <thead>
+              <tr><th>Field</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>supported</td><td>WebUSB available (Chrome / Edge / Opera on https or localhost).</td></tr>
+              <tr><td>devices</td><td>Connected WebUSB controllers.</td></tr>
+              <tr><td>connect()</td><td>Opens the device picker. Must be called from a click.</td></tr>
+              <tr><td>error</td><td>Last error from connect(), if any.</td></tr>
+            </tbody>
+          </table>
+          <div className="callout">
+            The player clicks Connect once; the permission is remembered and the guitar reconnects automatically.
+            Not available in Safari or Firefox. Inside an iframe, the iframe needs{' '}
+            <code className="docs-inline-code">allow="usb"</code>. On Windows and Linux the guitar already works
+            through the Gamepad API. Quick presses (a strum flick can last ~10 ms) are held for at least 50 ms so polling never misses them.
+          </div>
+
+          <h3 className="docs-h3">Two guitars</h3>
+          <p className="docs-p">
+            Use one <code className="docs-inline-code">useGamepad(index)</code> per player so each guitar has its own state and callbacks.
+            On macOS, click Connect once per guitar — each one gets the next free slot.
+          </p>
+          <pre className="code-block"><code>{`const player1 = useGamepad(0, { controllerProfile: 'guitar', onStrumDown: () => strum(1) });
+const player2 = useGamepad(1, { controllerProfile: 'guitar', onStrumDown: () => strum(2) });`}</code></pre>
         </div>
 
         {/* Haptics */}
@@ -417,7 +495,8 @@ const { gamepad } = useGamepads({ deadZone: 0.12 });`}</code></pre>
               <tr><td>ButtonDetails</td><td>{'{ buttonIndex: number, buttonName: string, pressed: boolean, touched: boolean, value: string }'}</td></tr>
               <tr><td>AxesDetails</td><td>{'{ axesIndex: number, axesName: string, value: number, previousValue: number }'}</td></tr>
               <tr><td>RumbleOptions</td><td>{'{ duration: number, weakMagnitude?: number, strongMagnitude?: number, startDelay?: number }'}</td></tr>
-              <tr><td>ControllerProfile</td><td>'xbox' | 'playstation' | 'switch' | 'generic'</td></tr>
+              <tr><td>ControllerProfile</td><td>'xbox' | 'playstation' | 'switch' | 'generic' | 'guitar'</td></tr>
+              <tr><td>UseUsbGamepadsReturn</td><td>{'{ supported: boolean, devices: UsbGamepadInfo[], connect: () => Promise<UsbGamepadInfo | null>, error: string | null }'}</td></tr>
               <tr><td>UseGamepadsProps</td><td>Full props interface for useGamepads / useGamepad.</td></tr>
               <tr><td>UseGamepadsReturn</td><td>Return type of useGamepads / useGamepad.</td></tr>
               <tr><td>UseGamepadSequenceOptions</td><td>Options for useGamepadSequence.</td></tr>
@@ -448,7 +527,7 @@ const { gamepad } = useGamepads({ deadZone: 0.12 });`}</code></pre>
                 <td>Chrome 21+</td>
                 <td><span className="badge-yes">Yes</span></td>
                 <td><span className="badge-yes">Yes</span></td>
-                <td>Full support including vibration actuator.</td>
+                <td>Full support including vibration actuator. WebUSB for Xbox 360 guitars on macOS.</td>
               </tr>
               <tr>
                 <td>Edge 12+</td>

@@ -8,13 +8,109 @@ const RUMBLE_PRESETS: { label: string; options: RumbleOptions }[] = [
   { label: 'Long',   options: { duration: 1000, weakMagnitude: 0.4, strongMagnitude: 0.4 } },
 ];
 
-const PROFILES: ControllerProfile[] = ['xbox', 'playstation', 'switch', 'generic'];
+const PROFILES: ControllerProfile[] = ['xbox', 'playstation', 'switch', 'generic', 'guitar'];
 
 interface GPState {
   id: string;
   connected: boolean;
   buttons: Record<string, { pressed: boolean; touched: boolean; value: number }>;
   axes: Record<string, number>;
+}
+
+const FRET_COLORS: Record<string, string> = {
+  GreenFret:  '#4ade80',
+  RedFret:    '#f87171',
+  YellowFret: '#fbbf24',
+  BlueFret:   '#60a5fa',
+  OrangeFret: '#fb923c',
+};
+
+function AxisBar({ value }: { value: number }) {
+  const fill = Math.abs(value) * 50;
+  const left = value >= 0 ? 50 : 50 + value * 50;
+  return (
+    <div style={{ flex: 1, height: 6, borderRadius: 3, background: 'var(--border)', position: 'relative', overflow: 'hidden' }}>
+      <div style={{
+        position: 'absolute', height: '100%', borderRadius: 3,
+        background: Math.abs(value) > 0.05 ? 'var(--blue)' : 'var(--border)',
+        left: `${left}%`, width: `${fill}%`,
+        transition: 'left 0.05s, width 0.05s',
+      }} />
+    </div>
+  );
+}
+
+function GuitarView({ btns, axes }: { btns: GPState['buttons']; axes: Record<string, number> }) {
+  const frets = ['GreenFret', 'RedFret', 'YellowFret', 'BlueFret', 'OrangeFret'];  // left → right on the neck
+  const navButtons = ['StarPower', 'Start', 'Xbox', 'DPadLeft', 'DPadRight'];
+  const whammy = axes['Whammy'] ?? 0;
+  const tilt   = axes['Tilt']   ?? 0;
+
+  return (
+    <div className="viz-grid">
+      <div className="card">
+        <div className="card-title">Frets</div>
+        <div className="btn-grid">
+          {frets.map(name => {
+            const pressed = btns[name]?.pressed ?? false;
+            const color = FRET_COLORS[name];
+            return (
+              <div
+                key={name}
+                className="btn-chip"
+                style={pressed ? { background: color, color: '#0a0a0c', boxShadow: `0 0 10px ${color}80` } : undefined}
+              >
+                {name.replace('Fret', '')}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-title">Strum</div>
+        <div className="btn-grid">
+          {['StrumUp', 'StrumDown'].map(name => (
+            <div key={name} className={`btn-chip${btns[name]?.pressed ? ' pressed' : ''}`} style={{ flex: 1, textAlign: 'center' }}>
+              {name === 'StrumUp' ? '▲ Up' : '▼ Down'}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-title">Whammy Bar</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <AxisBar value={whammy} />
+          <span style={{ fontFamily: 'monospace', fontSize: 12, color: Math.abs(whammy) > 0.05 ? 'var(--blue)' : 'var(--muted)', width: 52, textAlign: 'right' }}>
+            {whammy.toFixed(3)}
+          </span>
+        </div>
+        {(
+          <div style={{ marginTop: 12 }}>
+            <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 6 }}>Tilt</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <AxisBar value={tilt} />
+              <span style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--muted)', width: 52, textAlign: 'right' }}>
+                {tilt.toFixed(3)}
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="card">
+        <div className="card-title">Buttons</div>
+        <div className="btn-grid">
+          {navButtons.map(name => (
+            <div key={name} className={`btn-chip${btns[name]?.pressed ? ' pressed' : ''}`}>
+              {name}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function Visualizer() {
@@ -161,7 +257,11 @@ export default function Visualizer() {
         </div>
       )}
 
-      {connected && (
+      {connected && profile === 'guitar' && (
+        <GuitarView btns={btns} axes={axes as Record<string, number>} />
+      )}
+
+      {connected && profile !== 'guitar' && (
         <div className="viz-grid">
 
           {/* ── Buttons ───────────────────────────── */}
